@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel Marketplace</title>
+    <script>
+      if (location.pathname === "/admin/") location.replace("/admin");
+    </script>
+    <link rel="stylesheet" href="/styles.css?v=4">
+    <script src="/config.js?v=4"></script>
+  </head>
+  <body>
+    <div class="intro" id="intro">
+      <div class="intro-mark" id="introMark">PP</div>
+      <div class="intro-line"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="#products" title="Go to products">
+        <span class="brand-logo" id="brandLogo">PP</span>
+        <span class="brand-name" id="brandName">PanelPro Market</span>
+      </a>
+      <nav class="top-actions">
+        <a class="ghost-link" href="#products">▦ Products</a>
+        <button class="icon-btn" id="themeToggle" type="button" title="Light / dark mode">◐</button>
+        <button class="ghost-btn" id="accountBtn" type="button">🔐 Account</button>
+        <a class="admin-fab hide" id="adminLink" href="/admin" title="Admin settings">⚙</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="home">
+        <div class="hero-media" id="heroMedia"></div>
+        <div class="hero-content">
+          <div class="eyebrow">Fast delivery • secure account • clear demo preview</div>
+          <h1 id="heroTitle">Professional panel marketplace with smooth purchase flow</h1>
+          <p id="heroSubtitle">Browse polished product sections, preview demos, choose variants, check converted prices, and submit orders with a clean account history.</p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="#products">✨ Browse Products</a>
+            <button class="secondary-btn" id="openLoginHero" type="button">🔐 Login / Register</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust-band">
+        <div class="trust-item">
+          <strong>Fast processing</strong>
+          <span>Orders stay organized with clear account history and status.</span>
+        </div>
+        <div class="trust-item">
+          <strong>Demo first</strong>
+          <span>Products can include video previews before purchase.</span>
+        </div>
+        <div class="trust-item">
+          <strong>Live admin updates</strong>
+          <span>Sections, prices, images, and payment details update quickly.</span>
+        </div>
+      </section>
+
+      <section class="account-band hide" id="accountBand">
+        <div class="account-grid">
+          <div>
+            <span class="label">Signed in</span>
+            <strong id="accountName">Guest</strong>
+          </div>
+          <div>
+            <span class="label">Balance</span>
+            <strong id="accountBalance">$0.00</strong>
+          </div>
+          <div>
+            <span class="label">Last order</span>
+            <strong id="lastOrder">No order yet</strong>
+          </div>
+          <button class="secondary-btn" id="logoutBtn" type="button">Logout</button>
+        </div>
+      </section>
+
+      <section class="section-band" id="products">
+        <div class="section-head">
+          <div>
+            <span class="label">Products</span>
+            <h2>Available panels</h2>
+          </div>
+        </div>
+        <div id="productSections"></div>
+      </section>
+    </main>
+
+    <div class="help-dock" id="helpDock">
+      <button class="help-main" id="helpMain" type="button">💬 Help</button>
+      <div class="help-menu">
+        <a id="whatsappHelp" href="#" target="_blank" rel="noreferrer">🟢 WhatsApp</a>
+        <a id="telegramHelp" href="#" target="_blank" rel="noreferrer">✈ Telegram</a>
+      </div>
+    </div>
+
+    <dialog class="modal" id="authModal">
+      <form class="modal-box" method="dialog">
+        <button class="close-btn" value="cancel" aria-label="Close">x</button>
+        <h2 id="authTitle">🔐 Login</h2>
+        <div class="segmented">
+          <button class="active" id="loginTab" type="button">🔑 Login</button>
+          <button id="registerTab" type="button">📝 Register</button>
+        </div>
+        <p class="auth-hint" id="authHint">Use your own Gmail address. Create a separate site password; do not enter your real Gmail password.</p>
+        <label>
+          <span>Name</span>
+          <input id="authName" autocomplete="name" placeholder="Your name">
+        </label>
+        <label>
+          <span>Personal Gmail</span>
+          <input id="authEmail" type="email" autocomplete="email" placeholder="yourname@gmail.com">
+        </label>
+        <label>
+          <span>Site password</span>
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="Create or enter site password">
+        </label>
+        <button class="primary-btn full" id="authSubmit" type="button">🔑 Login</button>
+        <button class="secondary-btn full" id="googleBtn" type="button">G Continue with personal Gmail</button>
+        <p class="message" id="authMessage"></p>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="demoModal">
+      <form class="modal-box wide" method="dialog">
+        <button class="close-btn" value="cancel" aria-label="Close">x</button>
+        <h2 id="demoTitle">🎬 Demo</h2>
+        <div class="video-frame" id="demoFrame"></div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="buyModal">
+      <form class="modal-box wide" method="dialog">
+        <button class="close-btn" value="cancel" aria-label="Close">x</button>
+        <h2 id="buyTitle">🛒 Buy product</h2>
+        <div class="buy-layout">
+          <div>
+            <img class="buy-image" id="buyImage" alt="">
+            <p id="buyDescription"></p>
+            <div class="feature-row" id="buyFeatures"></div>
+          </div>
+          <div class="checkout-box">
+            <label>
+              <span>Variant</span>
+              <select id="variantSelect"></select>
+            </label>
+            <label>
+              <span>Quantity</span>
+              <input id="quantityInput" type="number" min="1" value="1">
+            </label>
+            <label>
+              <span>Payment method</span>
+              <select id="paymentSelect"></select>
+            </label>
+            <div class="price-box">
+              <span>Total</span>
+              <strong id="priceTotal">$0.00</strong>
+              <small id="priceLocal"></small>
+            </div>
+            <div class="payment-note" id="paymentNote"></div>
+            <label>
+              <span>Transaction ID / Reference</span>
+              <input id="transactionInput" placeholder="Manual payment reference">
+            </label>
+            <label>
+              <span>Contact</span>
+              <input id="contactInput" placeholder="WhatsApp, Telegram, or email">
+            </label>
+            <button class="primary-btn full" id="placeOrderBtn" type="button">Place Order</button>
+            <p class="message" id="orderMessage"></p>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/app.js?v=4" type="module"></script>
+  </body>
+</html>

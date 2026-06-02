@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="/styles.css?v=4">
+    <script src="/config.js?v=4"></script>
+  </head>
+  <body class="admin-page">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-logo" id="brandLogo">PP</span>
+        <span class="brand-name" id="brandName">Admin Panel</span>
+      </a>
+      <nav class="top-actions">
+        <a class="ghost-link" href="/">🏪 Storefront</a>
+        <button class="icon-btn" id="themeToggle" type="button" title="Light / dark mode">◐</button>
+        <button class="ghost-btn" id="logoutBtn" type="button">↪ Logout</button>
+      </nav>
+    </header>
+
+    <main class="admin-shell">
+      <aside class="admin-nav">
+        <button class="active" data-panel="settings" type="button">⚙ Settings</button>
+        <button data-panel="payments" type="button">💳 Payments</button>
+        <button data-panel="sections" type="button">▦ Sections</button>
+        <button data-panel="products" type="button">🧩 Products</button>
+        <button data-panel="orders" type="button">🧾 Orders</button>
+        <button data-panel="users" type="button">👤 Users</button>
+        <button data-panel="security" type="button">🔐 Security</button>
+      </aside>
+
+      <section class="admin-content">
+        <div class="admin-login" id="adminLogin">
+          <h1>Admin login</h1>
+          <label>
+            <span>Email</span>
+            <input id="adminEmail" type="email" value="admin@example.com">
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="adminPassword" type="password" value="Admin@12345">
+          </label>
+          <button class="primary-btn" id="adminLoginBtn" type="button">Login</button>
+          <p class="message" id="loginMessage"></p>
+        </div>
+
+        <div class="hide" id="adminArea">
+          <p class="admin-notice message" id="adminNotice"></p>
+          <section class="admin-panel active" data-panel-view="settings">
+            <div class="admin-head">
+              <div>
+                <span class="label">Brand</span>
+                <h1>Website settings</h1>
+              </div>
+              <button class="primary-btn" id="saveSettings" type="button">Save Settings</button>
+            </div>
+            <div class="form-grid">
+              <label><span>Site name</span><input id="siteName"></label>
+              <label><span>Logo text</span><input id="logoText"></label>
+              <label><span>Logo image URL / data</span><input id="logoUrl"></label>
+              <label><span>Background image URL / data</span><input id="backgroundImage"></label>
+              <label><span>Hero title</span><input id="heroTitle"></label>
+              <label><span>Hero subtitle</span><textarea id="heroSubtitle"></textarea></label>
+              <label><span>WhatsApp help link</span><input id="supportWhatsApp"></label>
+              <label><span>Telegram help link</span><input id="supportTelegram"></label>
+              <label><span>BDT per USD</span><input id="rateBDT" type="number" step="0.01"></label>
+              <label><span>INR per USD</span><input id="rateINR" type="number" step="0.01"></label>
+              <label><span>Google client id</span><input id="googleClientId"></label>
+              <label class="check-row"><input id="introAnimation" type="checkbox"><span>Intro animation</span></label>
+            </div>
+            <div class="uploader-row">
+              <label class="file-btn">Upload logo<input id="logoUpload" type="file" accept="image/*"></label>
+              <label class="file-btn">Upload background<input id="backgroundUpload" type="file" accept="image/*"></label>
+            </div>
+            <h2>Overview badges</h2>
+            <div id="badgeEditor"></div>
+            <button class="secondary-btn" id="addBadge" type="button">Add Badge</button>
+          </section>
+
+          <section class="admin-panel" data-panel-view="payments">
+            <div class="admin-head">
+              <div>
+                <span class="label">Manual first</span>
+                <h1>Payment methods</h1>
+              </div>
+              <button class="primary-btn" id="savePayments" type="button">Save Payments</button>
+            </div>
+            <div id="paymentEditor"></div>
+            <button class="secondary-btn" id="addPayment" type="button">Add Payment Method</button>
+          </section>
+
+          <section class="admin-panel" data-panel-view="sections">
+            <div class="admin-head">
+              <div>
+                <span class="label">Categories</span>
+                <h1>Sections</h1>
+              </div>
+              <button class="secondary-btn" id="newSection" type="button">New Section</button>
+            </div>
+            <div id="sectionEditor"></div>
+          </section>
+
+          <section class="admin-panel" data-panel-view="products">
+            <div class="admin-head">
+              <div>
+                <span class="label">Items</span>
+                <h1>Products</h1>
+              </div>
+              <button class="secondary-btn" id="newProduct" type="button">New Product</button>
+            </div>
+            <div id="productEditor"></div>
+          </section>
+
+          <section class="admin-panel" data-panel-view="orders">
+            <div class="admin-head">
+              <div>
+                <span class="label">Approval</span>
+                <h1>Orders</h1>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="ordersTable"></table>
+            </div>
+          </section>
+
+          <section class="admin-panel" data-panel-view="users">
+            <div class="admin-head">
+              <div>
+                <span class="label">Accounts</span>
+                <h1>Users and balance</h1>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="usersTable"></table>
+            </div>
+          </section>
+
+          <section class="admin-panel" data-panel-view="security">
+            <div class="admin-head">
+              <div>
+                <span class="label">Password</span>
+                <h1>Security</h1>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label><span>New admin password</span><input id="newAdminPassword" type="password"></label>
+            </div>
+            <button class="primary-btn" id="savePassword" type="button">Change Password</button>
+            <p class="message" id="securityMessage"></p>
+            <div class="note-box" id="defaultCredentials"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="/admin.js?v=4" type="module"></script>
+  </body>
+</html>
