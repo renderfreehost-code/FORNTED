@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin Panel</title>
-    <link rel="stylesheet" href="/styles.css?v=4">
-    <script src="/config.js?v=4"></script>
+    <link rel="stylesheet" href="/styles.css?v=6">
+    <script src="/config.js?v=6"></script>
   </head>
   <body class="admin-page">
     <header class="topbar">
@@ -14,21 +14,22 @@
         <span class="brand-name" id="brandName">Admin Panel</span>
       </a>
       <nav class="top-actions">
-        <a class="ghost-link" href="/">🏪 Storefront</a>
-        <button class="icon-btn" id="themeToggle" type="button" title="Light / dark mode">◐</button>
-        <button class="ghost-btn" id="logoutBtn" type="button">↪ Logout</button>
+        <a class="ghost-link" href="/">Storefront</a>
+        <button class="icon-btn" id="themeToggle" type="button" title="Light / dark mode">Mode</button>
+        <button class="ghost-btn" id="logoutBtn" type="button">Logout</button>
       </nav>
     </header>
 
     <main class="admin-shell">
       <aside class="admin-nav">
-        <button class="active" data-panel="settings" type="button">⚙ Settings</button>
-        <button data-panel="payments" type="button">💳 Payments</button>
-        <button data-panel="sections" type="button">▦ Sections</button>
-        <button data-panel="products" type="button">🧩 Products</button>
-        <button data-panel="orders" type="button">🧾 Orders</button>
-        <button data-panel="users" type="button">👤 Users</button>
-        <button data-panel="security" type="button">🔐 Security</button>
+        <button class="active" data-panel="settings" type="button">Settings</button>
+        <button data-panel="payments" type="button">Payments</button>
+        <button data-panel="sections" type="button">Sections</button>
+        <button data-panel="products" type="button">Products</button>
+        <button data-panel="stock" type="button">Key Stock</button>
+        <button data-panel="orders" type="button">Orders</button>
+        <button data-panel="users" type="button">Users</button>
+        <button data-panel="security" type="button">Security</button>
       </aside>
 
       <section class="admin-content">
@@ -48,6 +49,7 @@
 
         <div class="hide" id="adminArea">
           <p class="admin-notice message" id="adminNotice"></p>
+
           <section class="admin-panel active" data-panel-view="settings">
             <div class="admin-head">
               <div>
@@ -60,7 +62,8 @@
               <label><span>Site name</span><input id="siteName"></label>
               <label><span>Logo text</span><input id="logoText"></label>
               <label><span>Logo image URL / data</span><input id="logoUrl"></label>
-              <label><span>Background image URL / data</span><input id="backgroundImage"></label>
+              <label><span>Background fallback image URL / data</span><input id="backgroundImage"></label>
+              <label><span>Hero slide interval seconds</span><input id="heroIntervalSeconds" type="number" min="3" max="30"></label>
               <label><span>Hero title</span><input id="heroTitle"></label>
               <label><span>Hero subtitle</span><textarea id="heroSubtitle"></textarea></label>
               <label><span>WhatsApp help link</span><input id="supportWhatsApp"></label>
@@ -72,11 +75,11 @@
             </div>
             <div class="uploader-row">
               <label class="file-btn">Upload logo<input id="logoUpload" type="file" accept="image/*"></label>
-              <label class="file-btn">Upload background<input id="backgroundUpload" type="file" accept="image/*"></label>
+              <label class="file-btn">Upload fallback background<input id="backgroundUpload" type="file" accept="image/*"></label>
             </div>
-            <h2>Overview badges</h2>
-            <div id="badgeEditor"></div>
-            <button class="secondary-btn" id="addBadge" type="button">Add Badge</button>
+            <h2>Hero slider images</h2>
+            <div id="heroSlideEditor"></div>
+            <button class="secondary-btn" id="addHeroSlide" type="button">Add Hero Slide</button>
           </section>
 
           <section class="admin-panel" data-panel-view="payments">
@@ -113,12 +116,34 @@
             <div id="productEditor"></div>
           </section>
 
+          <section class="admin-panel" data-panel-view="stock">
+            <div class="admin-head">
+              <div>
+                <span class="label">Digital keys</span>
+                <h1>Variant key stock</h1>
+              </div>
+              <button class="primary-btn" id="saveStock" type="button">Add Stock</button>
+            </div>
+            <div class="form-grid">
+              <label><span>Product</span><select id="stockProductSelect"></select></label>
+              <label><span>Variant / duration</span><select id="stockVariantSelect"></select></label>
+              <label><span>Duration days</span><input id="stockDurationDays" type="number" min="0" placeholder="0 for lifetime"></label>
+              <label><span>Key stock, one key per line</span><textarea id="stockKeysInput" placeholder="KEY-001&#10;KEY-002&#10;KEY-003"></textarea></label>
+            </div>
+            <div class="row-actions">
+              <button class="danger-btn" id="deleteSelectedStock" type="button">Delete Selected Keys</button>
+              <button class="danger-btn" id="clearStock" type="button">Clear Variant Stock</button>
+            </div>
+            <div class="stock-list" id="stockList"></div>
+          </section>
+
           <section class="admin-panel" data-panel-view="orders">
             <div class="admin-head">
               <div>
                 <span class="label">Approval</span>
                 <h1>Orders</h1>
               </div>
+              <button class="danger-btn" id="deleteSelectedOrders" type="button">Delete Selected Orders</button>
             </div>
             <div class="table-wrap">
               <table id="ordersTable"></table>
@@ -155,6 +180,6 @@
       </section>
     </main>
 
-    <script src="/admin.js?v=4" type="module"></script>
+    <script src="/admin.js?v=6" type="module"></script>
   </body>
 </html>

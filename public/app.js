@@ -3,7 +3,9 @@ const state = {
   token: localStorage.getItem("panel_token") || "",
   user: null,
   orders: [],
-  buyProduct: null
+  buyProduct: null,
+  heroIndex: 0,
+  heroTimer: null
 };
 
 const els = {
@@ -64,7 +66,22 @@ const API_BASE = String(window.API_BASE_URL || localStorage.getItem("panel_api_b
 
 function openModal(dialog) {
   document.body.classList.add("modal-open");
-  dialog.showModal();
+  if (typeof dialog.showModal === "function") {
+    dialog.showModal();
+    return;
+  }
+  dialog.setAttribute("open", "");
+  dialog.classList.add("is-open");
+}
+
+function closeModal(dialog) {
+  if (typeof dialog.close === "function") {
+    dialog.close();
+  } else {
+    dialog.removeAttribute("open");
+    dialog.classList.remove("is-open");
+    document.body.classList.remove("modal-open");
+  }
 }
 
 function currency(amount, code = "USD") {
@@ -121,26 +138,70 @@ function showLogo(target, settings) {
   }
 }
 
+function getHeroSlides() {
+  const settings = state.data?.settings || {};
+  const slides = Array.isArray(settings.heroSlides)
+    ? settings.heroSlides.filter((slide) => slide.image)
+    : [];
+  if (slides.length) return slides;
+  return [{
+    image: settings.backgroundImage || "/assets/marketplace-bg.png",
+    title: settings.heroTitle || settings.siteName || "Panel Marketplace",
+    subtitle: settings.heroSubtitle || ""
+  }];
+}
+
+function applyHeroSlide(index) {
+  const settings = state.data.settings;
+  const slides = getHeroSlides();
+  const slide = slides[index % slides.length] || slides[0];
+  els.heroTitle.textContent = slide.title || settings.heroTitle || settings.siteName || "Panel Marketplace";
+  els.heroSubtitle.textContent = slide.subtitle || settings.heroSubtitle || "";
+  els.heroMedia.classList.remove("is-swapping");
+  void els.heroMedia.offsetWidth;
+  els.heroMedia.style.backgroundImage = `url("${slide.image || settings.backgroundImage || "/assets/marketplace-bg.png"}")`;
+  els.heroMedia.classList.add("is-swapping");
+}
+
+function startHeroSlider() {
+  window.clearInterval(state.heroTimer);
+  const slides = getHeroSlides();
+  state.heroIndex = Math.min(state.heroIndex, Math.max(slides.length - 1, 0));
+  applyHeroSlide(state.heroIndex);
+  if (slides.length > 1) {
+    const seconds = Math.max(3, Math.min(30, Number(state.data.settings.heroIntervalSeconds || 6)));
+    state.heroTimer = window.setInterval(() => {
+      state.heroIndex = (state.heroIndex + 1) % slides.length;
+      applyHeroSlide(state.heroIndex);
+    }, seconds * 1000);
+  }
+}
+
 function renderBrand() {
   const settings = state.data.settings;
   document.title = settings.siteName || "Panel Marketplace";
   showLogo(els.brandLogo, settings);
   els.brandName.textContent = settings.siteName || "Panel Marketplace";
   els.introMark.textContent = settings.logoText || "PP";
-  els.heroTitle.textContent = settings.heroTitle || settings.siteName || "Panel Marketplace";
-  els.heroSubtitle.textContent = settings.heroSubtitle || "";
-  els.heroMedia.style.backgroundImage = `url("${settings.backgroundImage || "/assets/marketplace-bg.png"}")`;
+  startHeroSlider();
   els.whatsappHelp.href = settings.supportWhatsApp || "#";
   els.telegramHelp.href = settings.supportTelegram || "#";
 }
 
 function finishIntro() {
   const enabled = state.data?.settings?.introAnimation !== false;
-  if (!enabled) {
+  const hide = () => {
     els.intro.classList.add("done");
+    window.setTimeout(() => {
+      els.intro.hidden = true;
+      els.intro.style.display = "none";
+    }, 620);
+  };
+  if (!enabled) {
+    hide();
     return;
   }
-  setTimeout(() => els.intro.classList.add("done"), 1050);
+  setTimeout(hide, 1050);
 }
 
 function setupHeroMotion() {
@@ -196,6 +257,20 @@ function productCard(product) {
       </div>
     </article>
   `;
+}
+
+function durationText(variant) {
+  const days = Number(variant?.durationDays || 0);
+  return days > 0 ? `${days} day${days === 1 ? "" : "s"}` : "Lifetime / custom";
+}
+
+function stockText(variant) {
+  const count = Number(variant?.stockCount || 0);
+  return `${count} in stock`;
+}
+
+function variantOptionLabel(variant) {
+  return `${variant.name} - ${currency(variant.priceUsd)} - ${durationText(variant)} - ${stockText(variant)}`;
 }
 
 function renderProducts() {
@@ -291,7 +366,7 @@ function openBuy(productId) {
   els.buyDescription.textContent = product.shortDescription || "";
   els.buyFeatures.innerHTML = featureChips(product.features);
   els.variantSelect.innerHTML = product.variants.map((variant) => `
-    <option value="${escapeAttr(variant.id)}">${escapeHtml(variant.name)} - ${currency(variant.priceUsd)}</option>
+    <option value="${escapeAttr(variant.id)}">${escapeHtml(variantOptionLabel(variant))}</option>
   `).join("");
   els.paymentSelect.innerHTML = state.data.paymentMethods.map((method) => `
     <option value="${escapeAttr(method.id)}">${escapeHtml(method.name)} (${escapeHtml(method.currency)})</option>
@@ -326,6 +401,7 @@ function updatePrice() {
     : `${currency(checkout.local, checkout.method.currency)} at ${checkout.rate} ${checkout.method.currency}/USD`;
   els.paymentNote.innerHTML = `
     <strong>💳 ${escapeHtml(checkout.method.name)}</strong><br>
+    Variant: ${escapeHtml(checkout.variant.name)} (${escapeHtml(durationText(checkout.variant))}, ${escapeHtml(stockText(checkout.variant))})<br>
     Account: ${escapeHtml(checkout.method.account || "Not set")}<br>
     ${escapeHtml(checkout.method.instructions || "")}
   `;
@@ -503,6 +579,15 @@ function wireEvents() {
   [els.variantSelect, els.quantityInput, els.paymentSelect].forEach((input) => input.addEventListener("input", updatePrice));
   els.placeOrderBtn.addEventListener("click", placeOrder);
   document.querySelectorAll("dialog").forEach((dialog) => {
+    dialog.querySelectorAll(".close-btn").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        closeModal(dialog);
+      });
+    });
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) closeModal(dialog);
+    });
     dialog.addEventListener("close", () => document.body.classList.remove("modal-open"));
   });
 }

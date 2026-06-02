@@ -7,8 +7,8 @@
     <script>
       if (location.pathname === "/admin/") location.replace("/admin");
     </script>
-    <link rel="stylesheet" href="/styles.css?v=4">
-    <script src="/config.js?v=4"></script>
+    <link rel="stylesheet" href="/styles.css?v=6">
+    <script src="/config.js?v=6"></script>
   </head>
   <body>
     <div class="intro" id="intro">
@@ -117,13 +117,13 @@
           <input id="authPassword" type="password" autocomplete="current-password" placeholder="Create or enter site password">
         </label>
         <button class="primary-btn full" id="authSubmit" type="button">🔑 Login</button>
-        <button class="secondary-btn full" id="googleBtn" type="button">G Continue with personal Gmail</button>
+        <button class="secondary-btn full google-auth" id="googleBtn" type="button"><span class="google-mark">G</span> Continue with personal Gmail</button>
         <p class="message" id="authMessage"></p>
       </form>
     </dialog>
 
     <dialog class="modal" id="demoModal">
-      <form class="modal-box wide" method="dialog">
+      <form class="modal-box wide demo-modal-box" method="dialog">
         <button class="close-btn" value="cancel" aria-label="Close">x</button>
         <h2 id="demoTitle">🎬 Demo</h2>
         <div class="video-frame" id="demoFrame"></div>
@@ -131,9 +131,14 @@
     </dialog>
 
     <dialog class="modal" id="buyModal">
-      <form class="modal-box wide" method="dialog">
+      <form class="modal-box wide checkout-modal" method="dialog">
         <button class="close-btn" value="cancel" aria-label="Close">x</button>
         <h2 id="buyTitle">🛒 Buy product</h2>
+        <div class="checkout-steps" aria-label="Checkout progress">
+          <span class="active">1</span>
+          <span>2</span>
+          <span>3</span>
+        </div>
         <div class="buy-layout">
           <div>
             <img class="buy-image" id="buyImage" alt="">
@@ -174,6 +179,6 @@
       </form>
     </dialog>
 
-    <script src="/app.js?v=4" type="module"></script>
+    <script src="/app.js?v=6" type="module"></script>
   </body>
 </html>

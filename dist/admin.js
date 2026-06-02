@@ -21,6 +21,7 @@ const els = {
   logoText: document.getElementById("logoText"),
   logoUrl: document.getElementById("logoUrl"),
   backgroundImage: document.getElementById("backgroundImage"),
+  heroIntervalSeconds: document.getElementById("heroIntervalSeconds"),
   heroTitle: document.getElementById("heroTitle"),
   heroSubtitle: document.getElementById("heroSubtitle"),
   supportWhatsApp: document.getElementById("supportWhatsApp"),
@@ -32,8 +33,8 @@ const els = {
   saveSettings: document.getElementById("saveSettings"),
   logoUpload: document.getElementById("logoUpload"),
   backgroundUpload: document.getElementById("backgroundUpload"),
-  badgeEditor: document.getElementById("badgeEditor"),
-  addBadge: document.getElementById("addBadge"),
+  badgeEditor: document.getElementById("heroSlideEditor"),
+  addBadge: document.getElementById("addHeroSlide"),
   paymentEditor: document.getElementById("paymentEditor"),
   addPayment: document.getElementById("addPayment"),
   savePayments: document.getElementById("savePayments"),
@@ -41,7 +42,16 @@ const els = {
   newSection: document.getElementById("newSection"),
   productEditor: document.getElementById("productEditor"),
   newProduct: document.getElementById("newProduct"),
+  stockProductSelect: document.getElementById("stockProductSelect"),
+  stockVariantSelect: document.getElementById("stockVariantSelect"),
+  stockDurationDays: document.getElementById("stockDurationDays"),
+  stockKeysInput: document.getElementById("stockKeysInput"),
+  stockList: document.getElementById("stockList"),
+  saveStock: document.getElementById("saveStock"),
+  deleteSelectedStock: document.getElementById("deleteSelectedStock"),
+  clearStock: document.getElementById("clearStock"),
   ordersTable: document.getElementById("ordersTable"),
+  deleteSelectedOrders: document.getElementById("deleteSelectedOrders"),
   usersTable: document.getElementById("usersTable"),
   newAdminPassword: document.getElementById("newAdminPassword"),
   savePassword: document.getElementById("savePassword"),
@@ -159,6 +169,7 @@ async function loadDashboard() {
   renderPayments();
   renderSections();
   renderProducts();
+  renderStock();
   renderOrders();
   renderUsers();
   renderSecurity();
@@ -190,6 +201,7 @@ function fillSettings() {
   els.logoText.value = settings.logoText || "";
   els.logoUrl.value = settings.logoUrl || "";
   els.backgroundImage.value = settings.backgroundImage || "";
+  els.heroIntervalSeconds.value = settings.heroIntervalSeconds || 6;
   els.heroTitle.value = settings.heroTitle || "";
   els.heroSubtitle.value = settings.heroSubtitle || "";
   els.supportWhatsApp.value = settings.supportWhatsApp || "";
@@ -204,14 +216,15 @@ function badgeRow(badge, index) {
   return `
     <div class="editor-row" data-badge-index="${index}">
       <div class="editor-row-head">
-        <strong>${escapeHtml(badge.name || "Badge")}</strong>
+        <strong>${escapeHtml(badge.title || `Slide ${index + 1}`)}</strong>
         <div class="row-actions">
           <label class="file-btn">Upload<input data-badge-upload="${index}" type="file" accept="image/*"></label>
           <button class="danger-btn" data-delete-badge="${index}" type="button">Delete</button>
         </div>
       </div>
       <div class="form-grid">
-        <label><span>Name</span><input data-badge-name="${index}" value="${escapeAttr(badge.name || "")}"></label>
+        <label><span>Title</span><input data-badge-name="${index}" value="${escapeAttr(badge.title || "")}"></label>
+        <label><span>Subtitle</span><input data-badge-subtitle="${index}" value="${escapeAttr(badge.subtitle || "")}"></label>
         <label><span>Image URL / data</span><input data-badge-image="${index}" value="${escapeAttr(badge.image || "")}"></label>
       </div>
     </div>
@@ -219,11 +232,12 @@ function badgeRow(badge, index) {
 }
 
 function renderBadges() {
-  const badges = state.data.settings.overviewBadges || [];
+  const badges = state.data.settings.heroSlides || [];
   els.badgeEditor.innerHTML = `<div class="editor-list">${badges.map(badgeRow).join("")}</div>`;
   els.badgeEditor.querySelectorAll("[data-delete-badge]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.data.settings.overviewBadges.splice(Number(button.dataset.deleteBadge), 1);
+      state.data.settings.heroSlides = state.data.settings.heroSlides || [];
+      state.data.settings.heroSlides.splice(Number(button.dataset.deleteBadge), 1);
       renderBadges();
     });
   });
@@ -241,10 +255,11 @@ function renderBadges() {
 function collectBadges() {
   return [...els.badgeEditor.querySelectorAll("[data-badge-index]")].map((row) => {
     const index = row.dataset.badgeIndex;
-    const old = state.data.settings.overviewBadges[Number(index)] || {};
+    const old = state.data.settings.heroSlides?.[Number(index)] || {};
     return {
       id: old.id,
-      name: row.querySelector(`[data-badge-name="${index}"]`).value,
+      title: row.querySelector(`[data-badge-name="${index}"]`).value,
+      subtitle: row.querySelector(`[data-badge-subtitle="${index}"]`).value,
       image: row.querySelector(`[data-badge-image="${index}"]`).value
     };
   });
@@ -257,6 +272,7 @@ async function saveSettings() {
     logoText: els.logoText.value,
     logoUrl: els.logoUrl.value,
     backgroundImage: els.backgroundImage.value,
+    heroIntervalSeconds: Number(els.heroIntervalSeconds.value || 6),
     heroTitle: els.heroTitle.value,
     heroSubtitle: els.heroSubtitle.value,
     supportWhatsApp: els.supportWhatsApp.value,
@@ -267,7 +283,7 @@ async function saveSettings() {
       BDT: Number(els.rateBDT.value || 118),
       INR: Number(els.rateINR.value || 84)
     },
-    overviewBadges: collectBadges()
+    heroSlides: collectBadges()
   };
   const payload = await api("/api/admin/settings", { method: "PUT", body });
   state.data.settings = payload.settings;
@@ -423,7 +439,7 @@ async function newSection() {
 }
 
 function variantsToText(variants = []) {
-  return variants.map((variant) => `${variant.name}|${variant.priceUsd}|${variant.description || ""}`).join("\n");
+  return variants.map((variant) => `${variant.name}|${variant.priceUsd}|${variant.durationDays || 0}|${variant.description || ""}`).join("\n");
 }
 
 function textToVariants(text) {
@@ -432,10 +448,11 @@ function textToVariants(text) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [name, priceUsd, ...description] = line.split("|");
+      const [name, priceUsd, durationDays, ...description] = line.split("|");
       return {
         name: name?.trim() || "Variant",
         priceUsd: Number(priceUsd || 0),
+        durationDays: Number(durationDays || 0),
         description: description.join("|").trim()
       };
     });
@@ -467,7 +484,7 @@ function productRow(product) {
         <label><span>YouTube demo URL</span><input data-product-demo value="${escapeAttr(product.demoVideoUrl || "")}"></label>
         <label><span>Short description</span><textarea data-product-description>${escapeHtml(product.shortDescription || "")}</textarea></label>
         <label><span>Features, one per line</span><textarea data-product-features>${escapeHtml((product.features || []).join("\n"))}</textarea></label>
-        <label><span>Variants: name|priceUsd|description</span><textarea data-product-variants>${escapeHtml(variantsToText(product.variants))}</textarea></label>
+        <label><span>Variants: name|priceUsd|durationDays|description</span><textarea data-product-variants>${escapeHtml(variantsToText(product.variants))}</textarea></label>
         <label class="check-row"><input data-product-enabled type="checkbox" ${product.enabled ? "checked" : ""}><span>Enabled</span></label>
       </div>
     </div>
@@ -516,6 +533,7 @@ async function saveProduct(id) {
   const index = state.data.products.findIndex((product) => product.id === id);
   state.data.products[index] = payload.product;
   renderProducts();
+  renderStock();
   notice("Product saved.");
 }
 
@@ -524,6 +542,7 @@ async function deleteProduct(id) {
   await api(`/api/admin/products/${encodeURIComponent(id)}`, { method: "DELETE" });
   state.data.products = state.data.products.filter((product) => product.id !== id);
   renderProducts();
+  renderStock();
   notice("Product deleted.");
 }
 
@@ -541,12 +560,132 @@ async function newProduct() {
       badge: "New",
       enabled: true,
       features: ["Manual payment", "Admin editable"],
-      variants: [{ name: "Basic", priceUsd: 5, description: "Starter variant" }]
+      variants: [{ name: "Basic", priceUsd: 5, durationDays: 1, description: "Starter variant", stockKeys: [] }]
     }
   });
   state.data.products.unshift(payload.product);
   renderProducts();
+  renderStock();
   notice("New product added.");
+}
+
+function replaceProduct(product) {
+  const index = state.data.products.findIndex((item) => item.id === product.id);
+  if (index >= 0) {
+    state.data.products[index] = product;
+  } else {
+    state.data.products.unshift(product);
+  }
+}
+
+function stockLabel(variant) {
+  const duration = Number(variant.durationDays || 0) > 0 ? `${variant.durationDays} days` : "Lifetime / custom";
+  const count = Array.isArray(variant.stockKeys) ? variant.stockKeys.length : Number(variant.stockCount || 0);
+  return `${variant.name} - ${duration} - ${count} keys`;
+}
+
+function getStockSelection() {
+  const product = state.data.products.find((item) => item.id === els.stockProductSelect.value) || state.data.products[0];
+  const variant = product?.variants?.find((item) => item.id === els.stockVariantSelect.value) || product?.variants?.[0];
+  return { product, variant };
+}
+
+function renderStock() {
+  if (!state.data || !els.stockProductSelect) return;
+  const currentProductId = els.stockProductSelect.value || state.data.products[0]?.id || "";
+  els.stockProductSelect.innerHTML = state.data.products.map((product) => `
+    <option value="${escapeAttr(product.id)}">${escapeHtml(product.name)}</option>
+  `).join("");
+  if (state.data.products.some((product) => product.id === currentProductId)) {
+    els.stockProductSelect.value = currentProductId;
+  }
+
+  const product = state.data.products.find((item) => item.id === els.stockProductSelect.value) || state.data.products[0];
+  if (!product) {
+    els.stockVariantSelect.innerHTML = "";
+    els.stockList.innerHTML = `<div class="note-box">Add a product first, then stock keys can be added here.</div>`;
+    return;
+  }
+
+  const currentVariantId = els.stockVariantSelect.value || product.variants?.[0]?.id || "";
+  els.stockVariantSelect.innerHTML = (product.variants || []).map((variant) => `
+    <option value="${escapeAttr(variant.id)}">${escapeHtml(stockLabel(variant))}</option>
+  `).join("");
+  if ((product.variants || []).some((variant) => variant.id === currentVariantId)) {
+    els.stockVariantSelect.value = currentVariantId;
+  }
+
+  const variant = (product.variants || []).find((item) => item.id === els.stockVariantSelect.value) || product.variants?.[0];
+  if (!variant) {
+    els.stockList.innerHTML = `<div class="note-box">This product has no variants yet.</div>`;
+    return;
+  }
+
+  els.stockDurationDays.value = Number(variant.durationDays || 0);
+  const keys = Array.isArray(variant.stockKeys) ? variant.stockKeys : [];
+  els.stockList.innerHTML = `
+    <div class="stock-head">
+      <strong>${escapeHtml(product.name)} / ${escapeHtml(variant.name)}</strong>
+      <span>${keys.length} key${keys.length === 1 ? "" : "s"} in stock</span>
+    </div>
+    ${keys.length ? keys.map((key) => `
+      <label class="stock-key-row">
+        <input data-stock-key type="checkbox" value="${escapeAttr(key)}">
+        <code>${escapeHtml(key)}</code>
+      </label>
+    `).join("") : `<div class="note-box">No keys added for this variant yet.</div>`}
+  `;
+}
+
+async function saveStock() {
+  const { product, variant } = getStockSelection();
+  if (!product || !variant) throw new Error("Select a product and variant first");
+  notice("Saving stock...");
+  const keys = els.stockKeysInput.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const payload = await api("/api/admin/stock", {
+    method: "POST",
+    body: {
+      productId: product.id,
+      variantId: variant.id,
+      durationDays: Number(els.stockDurationDays.value || 0),
+      keys
+    }
+  });
+  replaceProduct(payload.product);
+  els.stockKeysInput.value = "";
+  renderProducts();
+  renderStock();
+  notice(keys.length ? `${keys.length} key(s) added.` : "Variant duration updated.");
+}
+
+async function deleteSelectedStock() {
+  const { product, variant } = getStockSelection();
+  const keys = [...els.stockList.querySelectorAll("[data-stock-key]:checked")].map((input) => input.value);
+  if (!product || !variant) throw new Error("Select a product and variant first");
+  if (!keys.length) throw new Error("Select at least one key to delete");
+  if (!confirm(`Delete ${keys.length} selected key(s)?`)) return;
+  const payload = await api("/api/admin/stock", {
+    method: "DELETE",
+    body: { productId: product.id, variantId: variant.id, keys }
+  });
+  replaceProduct(payload.product);
+  renderProducts();
+  renderStock();
+  notice("Selected keys deleted.");
+}
+
+async function clearStock() {
+  const { product, variant } = getStockSelection();
+  if (!product || !variant) throw new Error("Select a product and variant first");
+  if (!confirm(`Clear all keys for ${variant.name}?`)) return;
+  const payload = await api("/api/admin/stock", {
+    method: "DELETE",
+    body: { productId: product.id, variantId: variant.id, clear: true }
+  });
+  replaceProduct(payload.product);
+  renderProducts();
+  renderStock();
+  notice("Variant stock cleared.");
 }
 
 function renderOrders() {
@@ -554,15 +693,16 @@ function renderOrders() {
   els.ordersTable.innerHTML = `
     <thead>
       <tr>
-        <th>Order</th><th>User</th><th>Product</th><th>Amount</th><th>Payment</th><th>Status</th><th>Action</th>
+        <th>Select</th><th>Order</th><th>User</th><th>Product</th><th>Amount</th><th>Payment</th><th>Status</th><th>Action</th>
       </tr>
     </thead>
     <tbody>
       ${rows.map((order) => `
         <tr data-order-id="${escapeAttr(order.id)}">
+          <td><input data-order-select type="checkbox" value="${escapeAttr(order.id)}"></td>
           <td>${escapeHtml(order.id.slice(0, 8))}<br><span class="label">${escapeHtml(new Date(order.createdAt).toLocaleString())}</span></td>
           <td>${escapeHtml(order.userEmail)}<br>${escapeHtml(order.contact || "")}</td>
-          <td>${escapeHtml(order.productName)}<br>${escapeHtml(order.variantName)} x ${escapeHtml(order.quantity)}</td>
+          <td>${escapeHtml(order.productName)}<br>${escapeHtml(order.variantName)} x ${escapeHtml(order.quantity)}${order.deliveredKeys?.length ? `<br><span class="label">Keys: ${escapeHtml(order.deliveredKeys.join(", "))}</span>` : ""}</td>
           <td>${currency(order.totalUsd)}<br>${currency(order.totalLocal, order.currency)}</td>
           <td>${escapeHtml(order.paymentMethodName)}<br>${escapeHtml(order.transactionId || "No reference")}</td>
           <td><span class="status-pill status-${escapeAttr(order.status)}">${escapeHtml(order.status)}</span></td>
@@ -599,7 +739,21 @@ async function saveOrder(id) {
   state.data.orders[index] = payload.order;
   renderOrders();
   renderUsers();
+  await loadDashboard();
   notice("Order updated.");
+}
+
+async function deleteSelectedOrders() {
+  const ids = [...els.ordersTable.querySelectorAll("[data-order-select]:checked")].map((input) => input.value);
+  if (!ids.length) throw new Error("Select at least one order to delete");
+  if (!confirm(`Delete ${ids.length} selected order(s)?`)) return;
+  const payload = await api("/api/admin/orders/delete-bulk", {
+    method: "POST",
+    body: { ids }
+  });
+  state.data.orders = state.data.orders.filter((order) => !ids.includes(order.id));
+  renderOrders();
+  notice(`${payload.deleted || ids.length} order(s) deleted.`);
 }
 
 function renderUsers() {
@@ -685,7 +839,13 @@ function wireEvents() {
   });
   els.saveSettings.addEventListener("click", () => saveSettings().catch((error) => notice(error.message, "error")));
   els.addBadge.addEventListener("click", () => {
-    state.data.settings.overviewBadges.push({ id: "", name: "New Badge", image: state.data.settings.backgroundImage });
+    state.data.settings.heroSlides = state.data.settings.heroSlides || [];
+    state.data.settings.heroSlides.push({
+      id: "",
+      title: "New slide",
+      subtitle: "Add a short banner subtitle.",
+      image: state.data.settings.backgroundImage || "/assets/marketplace-bg.png"
+    });
     renderBadges();
   });
   els.logoUpload.addEventListener("change", async () => {
@@ -711,6 +871,12 @@ function wireEvents() {
   els.savePayments.addEventListener("click", () => savePayments().catch((error) => notice(error.message, "error")));
   els.newSection.addEventListener("click", () => newSection().catch((error) => notice(error.message, "error")));
   els.newProduct.addEventListener("click", () => newProduct().catch((error) => notice(error.message, "error")));
+  els.stockProductSelect.addEventListener("change", renderStock);
+  els.stockVariantSelect.addEventListener("change", renderStock);
+  els.saveStock.addEventListener("click", () => saveStock().catch((error) => notice(error.message, "error")));
+  els.deleteSelectedStock.addEventListener("click", () => deleteSelectedStock().catch((error) => notice(error.message, "error")));
+  els.clearStock.addEventListener("click", () => clearStock().catch((error) => notice(error.message, "error")));
+  els.deleteSelectedOrders.addEventListener("click", () => deleteSelectedOrders().catch((error) => notice(error.message, "error")));
   els.savePassword.addEventListener("click", savePassword);
 }
 
