@@ -593,6 +593,60 @@
     background: linear-gradient(135deg, #bd00ff, #6f35ff);
   }
 
+  .user-menu {
+    @apply relative;
+  }
+
+  .user-trigger {
+    @apply inline-flex h-11 max-w-[190px] items-center justify-center gap-2 rounded-lg border border-hot/40 px-3 text-white transition;
+    background: linear-gradient(135deg, #bd00ff, #6f35ff);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 22px rgba(0,0,0,.24);
+  }
+
+  .user-trigger:hover {
+    box-shadow: 0 0 22px rgba(174, 0, 255, .36);
+  }
+
+  .user-trigger .icon-user {
+    @apply shrink-0;
+  }
+
+  .user-trigger strong {
+    @apply truncate text-[11px] font-black leading-none;
+    max-width: 130px;
+  }
+
+  .user-dropdown {
+    @apply absolute right-0 top-[calc(100%+10px)] z-50 grid min-w-56 gap-2 rounded-lg border border-hot/25 bg-panel p-3 text-left shadow-deep;
+    box-shadow: 0 22px 70px rgba(0,0,0,.55), 0 0 0 1px rgba(189,0,255,.14);
+  }
+
+  .user-dropdown::before {
+    content: "";
+    position: absolute;
+    right: 16px;
+    top: -7px;
+    width: 14px;
+    height: 14px;
+    transform: rotate(45deg);
+    border-left: 1px solid rgba(255,61,216,.25);
+    border-top: 1px solid rgba(255,61,216,.25);
+    background: rgb(var(--color-panel));
+  }
+
+  .user-dropdown small {
+    @apply text-[10px] font-black uppercase tracking-wide text-hot;
+  }
+
+  .user-dropdown strong {
+    @apply mb-1 block max-w-52 truncate text-xs text-white;
+  }
+
+  .user-dropdown button,
+  .user-dropdown a {
+    @apply rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm font-black text-slate-200 transition hover:border-hot/40 hover:text-white;
+  }
+
   .icon-button span,
   .icon-user,
   .icon-settings,
@@ -1204,6 +1258,56 @@
     @apply text-white;
   }
 
+  .history-modal {
+    width: min(92vw, 620px);
+    padding: 0;
+    border-color: rgba(189,0,255,.34);
+    background: linear-gradient(180deg, rgba(29,30,52,.98), rgba(18,19,36,.98));
+    box-shadow: 0 28px 90px rgba(0,0,0,.62), 0 0 0 1px rgba(189,0,255,.15);
+  }
+
+  .history-modal .close-button {
+    display: none;
+  }
+
+  .history-head {
+    @apply flex items-center justify-between gap-4 border-b border-hot/15 px-5 py-4;
+  }
+
+  .history-head span {
+    @apply text-xs font-black uppercase tracking-wide text-hot;
+  }
+
+  .history-head h2 {
+    @apply mt-1 text-xl font-black uppercase text-white;
+  }
+
+  .history-list {
+    @apply grid max-h-[68vh] gap-3 overflow-y-auto p-5;
+  }
+
+  .history-empty {
+    @apply rounded-lg border border-white/10 bg-black/25 p-5 text-center text-slate-300;
+  }
+
+  .history-item {
+    @apply grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-white/10 bg-black/30 p-3;
+  }
+
+  .history-item strong,
+  .history-item b {
+    @apply block text-white;
+  }
+
+  .history-item span,
+  .history-item small {
+    @apply block text-xs text-slate-400;
+  }
+
+  .history-item > div:last-child {
+    @apply grid justify-items-end gap-1 text-right;
+  }
+
   @media (max-width: 520px) {
     .modal-backdrop {
       padding: 14px;
@@ -1258,6 +1362,21 @@
 
     .brand-block strong {
       @apply text-lg;
+    }
+
+    .user-trigger {
+      max-width: 132px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .user-trigger strong {
+      max-width: 78px;
+      font-size: 10px;
+    }
+
+    .user-dropdown {
+      min-width: min(76vw, 260px);
     }
 
     .shop-banner {

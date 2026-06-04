@@ -62,8 +62,10 @@ function App() {
   const [dashboard, setDashboard] = useState(null);
   const [notice, setNotice] = useState("");
   const [introVisible, setIntroVisible] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [routeKey, setRouteKey] = useState(() => `${window.location.pathname}${window.location.hash}`);
 
-  const isAdminRoute = window.location.pathname.startsWith("/admin");
+  const isAdminRoute = routeKey.startsWith("/admin") || routeKey.endsWith("#admin");
 
   async function api(path, options = {}) {
     const response = await fetch(`${API_BASE}${path}`, {
@@ -92,6 +94,7 @@ function App() {
     setUser(null);
     setOrders([]);
     setDashboard(null);
+    setHistoryOpen(false);
   }
 
   async function loadBootstrap() {
@@ -123,6 +126,16 @@ function App() {
 
   useEffect(() => {
     loadBootstrap().catch((error) => setNotice(error.message));
+  }, []);
+
+  useEffect(() => {
+    const syncRoute = () => setRouteKey(`${window.location.pathname}${window.location.hash}`);
+    window.addEventListener("popstate", syncRoute);
+    window.addEventListener("hashchange", syncRoute);
+    return () => {
+      window.removeEventListener("popstate", syncRoute);
+      window.removeEventListener("hashchange", syncRoute);
+    };
   }, []);
 
   useEffect(() => {
@@ -161,8 +174,10 @@ function App() {
         user={user}
         isAdminRoute={isAdminRoute}
         theme={theme}
+        orders={orders}
         onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         onAuth={() => { setAuthMode("login"); setAuthOpen(true); }}
+        onHistory={() => setHistoryOpen(true)}
         onLogout={logout}
       />
 
@@ -195,6 +210,8 @@ function App() {
       <HelpDock settings={settings} />
 
       {demoProduct && <DemoModal product={demoProduct} onClose={() => setDemoProduct(null)} />}
+
+      {historyOpen && user && <OrderHistoryModal orders={orders} onClose={() => setHistoryOpen(false)} />}
 
       {checkoutProduct && (
         <CheckoutFlow
@@ -236,7 +253,9 @@ function App() {
   );
 }
 
-function HeaderShell({ settings, user, isAdminRoute, theme, onTheme, onAuth, onLogout }) {
+function HeaderShell({ settings, user, isAdminRoute, theme, orders, onTheme, onAuth, onHistory, onLogout }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const orderCount = orders?.length || 0;
   return (
     <header className="shop-header">
       <div className="shop-header-inner">
@@ -246,9 +265,27 @@ function HeaderShell({ settings, user, isAdminRoute, theme, onTheme, onAuth, onL
         </a>
         <nav className="shop-actions">
           {isAdminRoute ? <a className="icon-button" href="/" aria-label="Storefront"><span className="icon-home" /></a> : null}
-          {!isAdminRoute && user?.role === "admin" ? <a className="icon-button" href="/admin" aria-label="Admin panel"><span className="icon-settings" /></a> : null}
+          {!isAdminRoute && user?.role === "admin" ? <a className="icon-button" href="/#admin" aria-label="Admin panel"><span className="icon-settings" /></a> : null}
           <button className="icon-button" type="button" onClick={onTheme} aria-label="Toggle theme"><span className={theme === "dark" ? "icon-sun" : "icon-moon"} /></button>
-          <button className="icon-button primary" type="button" onClick={user ? onLogout : onAuth} aria-label={user ? "Logout" : "Login"}><span className="icon-user" /></button>
+          {user ? (
+            <div className="user-menu">
+              <button className="user-trigger" type="button" onClick={() => setMenuOpen((open) => !open)} aria-label="Account menu" aria-expanded={menuOpen}>
+                <span className="icon-user" />
+                <strong>{user.email}</strong>
+              </button>
+              {menuOpen && (
+                <div className="user-dropdown">
+                  <small>Signed in</small>
+                  <strong>{user.email}</strong>
+                  <button type="button" onClick={() => { setMenuOpen(false); onHistory(); }}>History {orderCount ? `(${orderCount})` : ""}</button>
+                  {user.role === "admin" && <a href="/#admin" onClick={() => setMenuOpen(false)}>Admin Panel</a>}
+                  <button type="button" onClick={() => { setMenuOpen(false); onLogout(); }}>Logout</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button className="icon-button primary" type="button" onClick={onAuth} aria-label="Login"><span className="icon-user" /></button>
+          )}
         </nav>
       </div>
     </header>
@@ -277,7 +314,7 @@ function Header({ settings, user, isAdminRoute, theme, onTheme, onAuth, onLogout
         </a>
         <nav className="shop-actions">
           {isAdminRoute ? <a className="icon-button" href="/" aria-label="Storefront"><span className="icon-home" /></a> : null}
-          {!isAdminRoute && user?.role === "admin" ? <a className="icon-button" href="/admin" aria-label="Admin panel"><span className="icon-settings" /></a> : null}
+          {!isAdminRoute && user?.role === "admin" ? <a className="icon-button" href="/#admin" aria-label="Admin panel"><span className="icon-settings" /></a> : null}
           <button className="icon-pill" type="button" onClick={onTheme}>{theme === "dark" ? "☀" : "●"}</button>
           <button className="icon-button primary" type="button" onClick={user ? onLogout : onAuth} aria-label={user ? "Logout" : "Login"}><span className="icon-user" /></button>
         </nav>
@@ -314,16 +351,6 @@ function StorefrontShell({ data, user, orders, setAuthOpen, setAuthMode, openDem
         <div className="slider-dots" aria-label="Hero slides">
           {slides.map((item, index) => <button key={item.id || index} className={index === slide ? "active" : ""} type="button" onClick={() => setSlide(index)} aria-label={`Slide ${index + 1}`} />)}
         </div>
-      )}
-
-      {user && (
-        <section className="mx-auto max-w-6xl px-4 pt-5">
-          <div className="account-strip">
-            <Info label="Signed in" value={`${user.name} (${user.email})`} />
-            <Info label="Balance" value={money(user.balanceUsd)} />
-            <Info label="Last order" value={orders[0] ? `${orders[0].productName} - ${orders[0].status}` : "No order yet"} />
-          </div>
-        </section>
       )}
 
       <section id="products" className="mx-auto max-w-6xl px-4 py-10">
@@ -363,10 +390,41 @@ function StorefrontShell({ data, user, orders, setAuthOpen, setAuthMode, openDem
         <strong>{settings.siteName || "ACI STORE"}</strong>
         <div>
           <a href="#products">Products</a>
-          <a href="/admin">Admin</a>
+          <a href="/#admin">Admin</a>
         </div>
       </footer>
     </main>
+  );
+}
+
+function OrderHistoryModal({ orders, onClose }) {
+  return (
+    <Modal onClose={onClose} className="history-modal">
+      <div className="history-head">
+        <div>
+          <span>Account</span>
+          <h2>Order History</h2>
+        </div>
+        <button className="checkout-close" type="button" onClick={onClose}>x</button>
+      </div>
+      <div className="history-list">
+        {!orders.length && <p className="history-empty">No orders yet.</p>}
+        {orders.map((order) => (
+          <article className="history-item" key={order.id}>
+            <div>
+              <strong>{order.productName}</strong>
+              <span>{order.variantName} x {order.quantity}</span>
+              <small>{new Date(order.createdAt).toLocaleString()}</small>
+            </div>
+            <div>
+              <b>{money(order.totalUsd)}</b>
+              <span>{money(order.totalLocal, order.currency)}</span>
+              <em className={`status ${order.status}`}>{order.status}</em>
+            </div>
+          </article>
+        ))}
+      </div>
+    </Modal>
   );
 }
 
@@ -438,23 +496,11 @@ function Storefront({ data, user, orders, setAuthOpen, setAuthMode, openDemo, op
             <p className="mt-4 text-lg text-slate-200">{activeSlide.subtitle || settings.heroSubtitle}</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a className="primary-action" href="#products">Browse Products</a>
-              <button className="secondary-action" type="button" onClick={() => { setAuthMode("login"); setAuthOpen(true); }}>
-                {user ? "Account History" : "Login / Register"}
-              </button>
+              {!user && <button className="secondary-action" type="button" onClick={() => { setAuthMode("login"); setAuthOpen(true); }}>Login / Register</button>}
             </div>
           </div>
         </div>
       </section>
-
-      {user && (
-        <section className="mx-auto max-w-7xl px-4 py-6">
-          <div className="account-strip">
-            <Info label="Signed in" value={`${user.name} (${user.email})`} />
-            <Info label="Balance" value={money(user.balanceUsd)} />
-            <Info label="Last order" value={orders[0] ? `${orders[0].productName} - ${orders[0].status}` : "No order yet"} />
-          </div>
-        </section>
-      )}
 
       <section id="products" className="mx-auto max-w-7xl px-4 py-12">
         <div className="section-title">
@@ -495,7 +541,7 @@ function Storefront({ data, user, orders, setAuthOpen, setAuthMode, openDemo, op
         <strong className="text-white">{settings.siteName || "ACI STORE"}</strong>
         <div className="mt-3 flex justify-center gap-4">
           <a href="#products">Products</a>
-          <a href="/admin">Admin</a>
+          <a href="/#admin">Admin</a>
         </div>
       </footer>
     </main>
