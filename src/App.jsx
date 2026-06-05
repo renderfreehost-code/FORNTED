@@ -21,9 +21,64 @@ function methodIcon(method) {
   if (text.includes("bkash")) return "bK";
   if (text.includes("nagad")) return "Ng";
   if (text.includes("rocket")) return "R";
-  if (text.includes("binance")) return "B";
+  if (text.includes("trc20")) return "TRC";
+  if (text.includes("bep20") || text.includes("bsc")) return "BSC";
+  if (text.includes("btc") || text.includes("bitcoin")) return "BTC";
+  if (text.includes("usdt")) return "USDT";
+  if (text.includes("binance")) return "BN";
   if (text.includes("upi") || text.includes("india")) return "UPI";
   return (method?.name || "PM").slice(0, 2).toUpperCase();
+}
+
+function paymentTone(method) {
+  const text = `${method?.id || ""} ${method?.name || ""}`.toLowerCase();
+  if (text.includes("bkash")) return "bkash";
+  if (text.includes("nagad")) return "nagad";
+  if (text.includes("rocket")) return "rocket";
+  if (text.includes("binance") || text.includes("usdt") || text.includes("btc") || text.includes("bitcoin")) return "binance";
+  if (text.includes("upi") || text.includes("india")) return "india";
+  return "default";
+}
+
+function isBinanceLike(method) {
+  const group = String(method?.group || "").toLowerCase();
+  const text = `${method?.id || ""} ${method?.name || ""}`.toLowerCase();
+  return group === "binance" || text.includes("binance") || text.includes("usdt") || text.includes("trc20") || text.includes("bep20") || text.includes("bsc") || text.includes("btc") || text.includes("bitcoin");
+}
+
+function isIndiaLike(method) {
+  const text = `${method?.id || ""} ${method?.name || ""}`.toLowerCase();
+  return text.includes("india") || text.includes("upi");
+}
+
+function readImageFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve("");
+    if (!file.type.startsWith("image/")) return reject(new Error("Please choose an image file."));
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Image upload failed."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function copyText(value) {
+  const text = String(value || "");
+  if (!text) return false;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  return copied;
 }
 
 function youtubeEmbed(url) {
@@ -46,6 +101,71 @@ function Logo({ settings, size = "normal" }) {
   const cls = size === "small" ? "logo size-small" : "logo";
   if (settings?.logoUrl) return <span className={cls}><img src={settings.logoUrl} alt={settings.siteName || "Logo"} /></span>;
   return <span className={cls}>{settings?.logoText || "GP"}</span>;
+}
+
+function PaymentLogo({ method }) {
+  return (
+    <span className="payment-logo">
+      {method?.logoUrl ? <img src={method.logoUrl} alt={method.name || "Payment"} /> : <b>{methodIcon(method)}</b>}
+    </span>
+  );
+}
+
+function TrustIcon({ icon }) {
+  if (icon === "support") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 13a8 8 0 0 1 16 0" />
+        <path d="M4 13v4a2 2 0 0 0 2 2h2v-7H6a2 2 0 0 0-2 2Z" />
+        <path d="M20 13v4a2 2 0 0 1-2 2h-2v-7h2a2 2 0 0 1 2 2Z" />
+        <path d="M15 19h-2.5a2 2 0 0 1-2-2" />
+      </svg>
+    );
+  }
+  if (icon === "shield") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3 19 6v5c0 4.5-2.8 8.2-7 10-4.2-1.8-7-5.5-7-10V6l7-3Z" />
+        <path d="m9 12 2 2 4-5" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 7h10v10H3z" />
+      <path d="M13 10h3.5l2.5 3v4h-6z" />
+      <path d="M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+      <path d="M17 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+    </svg>
+  );
+}
+
+function BrandIcon({ type }) {
+  if (type === "telegram") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="11" />
+        <path d="M17.8 7.2 5.7 12c-.8.3-.8.8-.1 1l3.1 1 1.2 3.7c.2.6.5.7.9.2l1.7-1.7 3.3 2.4c.6.3 1 .1 1.2-.6l2.2-10.2c.2-.8-.3-1.1-1.2-.8Z" />
+        <path d="m9 14 7.4-4.7-5.8 5.7-.2 2" />
+      </svg>
+    );
+  }
+  if (type === "help") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 13a8 8 0 0 1 16 0" />
+        <path d="M4 13v4a2 2 0 0 0 2 2h1v-7H6a2 2 0 0 0-2 2Z" />
+        <path d="M20 13v4a2 2 0 0 1-2 2h-1v-7h1a2 2 0 0 1 2 2Z" />
+        <path d="M14 19h-2" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="11" />
+      <path d="M8.4 6.7c.4-.3 1-.2 1.3.2l.9 1.4c.3.5.2 1.1-.2 1.5l-.6.6c.7 1.4 1.8 2.5 3.2 3.2l.7-.6c.4-.4 1-.4 1.5-.1l1.4.9c.4.3.5.9.2 1.3-.8 1.1-1.8 1.5-3.2 1.1-3.3-.9-5.9-3.5-6.8-6.8-.4-1.4 0-2.4 1.1-3.2Z" />
+    </svg>
+  );
 }
 
 function App() {
@@ -235,8 +355,17 @@ function App() {
           onClose={() => setAuthOpen(false)}
           onSubmit={async (form) => {
             setAuthMessage("Checking...");
-            const path = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
+            const path = authMode === "forgot" ? "/api/auth/forgot-password" : authMode === "login" ? "/api/auth/login" : "/api/auth/register";
             const payload = await api(path, { method: "POST", body: form });
+            if (authMode === "forgot") {
+              if (form.phase === "request") {
+                setAuthMessage(payload.message || "Reset code sent to your Gmail.");
+                return payload;
+              }
+              setAuthMode("login");
+              setAuthMessage("Password reset. Login with your new password.");
+              return;
+            }
             saveToken(payload.token, payload.user);
             setAuthOpen(false);
             setAuthMessage("");
@@ -379,7 +508,7 @@ function StorefrontShell({ data, user, orders, setAuthOpen, setAuthMode, openDem
         </div>
         <div className="trust-grid">
           {[
-            ["rocket", "Instant Delivery", "Keys and order details stay organized after admin approval."],
+            ["delivery", "Instant Delivery", "Keys and order details stay organized after admin approval."],
             ["support", "24/7 Support", "WhatsApp and Telegram help links are controlled from admin."],
             ["shield", "100% Secure", "Manual verification keeps payment proof and order status clear."]
           ].map(([icon, title, text]) => <TrustCard key={title} icon={icon} title={title} text={text} />)}
@@ -392,6 +521,7 @@ function StorefrontShell({ data, user, orders, setAuthOpen, setAuthMode, openDem
           <a href="#products">Products</a>
           <a href="/#admin">Admin</a>
         </div>
+        <p>&copy; 2026 {settings.siteName || "ACI STORE"}. All rights reserved.</p>
       </footer>
     </main>
   );
@@ -464,7 +594,7 @@ function ProductTile({ product, openDemo, openCheckout }) {
 function TrustCard({ icon, title, text }) {
   return (
     <article className="feature-card">
-      <span className={`feature-symbol ${icon}`} />
+      <span className={`feature-symbol ${icon}`}><TrustIcon icon={icon} /></span>
       <h3>{title}</h3>
       <p>{text}</p>
     </article>
@@ -543,6 +673,7 @@ function Storefront({ data, user, orders, setAuthOpen, setAuthMode, openDemo, op
           <a href="#products">Products</a>
           <a href="/#admin">Admin</a>
         </div>
+        <p className="mt-3 text-sm">&copy; 2026 {settings.siteName || "ACI STORE"}. All rights reserved.</p>
       </footer>
     </main>
   );
@@ -586,9 +717,15 @@ function ProductCard({ product, openDemo, openCheckout }) {
 }
 
 function FeatureCard({ icon, title, text }) {
+  const lowered = `${icon || ""} ${title || ""}`.toLowerCase();
+  const normalizedIcon = lowered.includes("support")
+    ? "support"
+    : lowered.includes("secure") || lowered.includes("verification")
+      ? "shield"
+      : "delivery";
   return (
     <article className="feature-card">
-      <span>{icon}</span>
+      <span className={`feature-symbol ${normalizedIcon}`}><TrustIcon icon={normalizedIcon} /></span>
       <h3>{title}</h3>
       <p>{text}</p>
     </article>
@@ -596,7 +733,21 @@ function FeatureCard({ icon, title, text }) {
 }
 
 function AuthModal({ mode, setMode, message, setMessage, googleClientId, onClose, onSubmit, onGoogleCredential }) {
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", code: "" });
+  const [codeSent, setCodeSent] = useState(false);
+  const title = mode === "forgot" ? "Forgot Password" : mode === "login" ? "Login" : "Register";
+  const buttonText = mode === "forgot" ? (codeSent ? "Verify Code & Reset" : "Send Reset Code") : mode === "login" ? "Login" : "Create Account";
+  useEffect(() => {
+    setCodeSent(false);
+    setForm((current) => ({ ...current, code: "", password: "" }));
+  }, [mode]);
+
+  async function submitForm() {
+    const payload = await onSubmit({ ...form, phase: mode === "forgot" ? (codeSent ? "reset" : "request") : mode });
+    if (mode === "forgot" && !codeSent) setCodeSent(true);
+    return payload;
+  }
+
   async function googleLogin() {
     if (!googleClientId) {
       setMessage("Google Client ID admin settings theke set korte hobe.");
@@ -623,7 +774,7 @@ function AuthModal({ mode, setMode, message, setMessage, googleClientId, onClose
 
   return (
     <Modal onClose={onClose} className="max-w-md">
-      <h2 className="text-2xl font-black">{mode === "login" ? "Login" : "Register"}</h2>
+      <h2 className="text-2xl font-black">{title}</h2>
       <div className="segmented">
         <button className={mode === "login" ? "active" : ""} type="button" onClick={() => setMode("login")}>Login</button>
         <button className={mode === "register" ? "active" : ""} type="button" onClick={() => setMode("register")}>Register</button>
@@ -631,32 +782,50 @@ function AuthModal({ mode, setMode, message, setMessage, googleClientId, onClose
       <p className="rounded-lg border border-sky/20 bg-sky/10 p-3 text-sm text-slate-300">Use your own Gmail. Site password is separate; never enter your real Gmail password here.</p>
       {mode === "register" && <Field label="Name" value={form.name} onChange={(name) => setForm({ ...form, name })} />}
       <Field label="Personal Gmail" value={form.email} onChange={(email) => setForm({ ...form, email })} />
-      <Field label="Site password" type="password" value={form.password} onChange={(password) => setForm({ ...form, password })} />
-      <button className="primary-action w-full" type="button" onClick={() => onSubmit(form).catch((error) => setMessage(error.message))}>
-        {mode === "login" ? "Login" : "Create Account"}
+      {mode === "forgot" && codeSent && <Field label="Reset code" value={form.code} onChange={(code) => setForm({ ...form, code })} />}
+      {(mode !== "forgot" || codeSent) && <PasswordField label={mode === "forgot" ? "New site password" : "Site password"} value={form.password} onChange={(password) => setForm({ ...form, password })} />}
+      <button className="primary-action w-full" type="button" onClick={() => submitForm().catch((error) => setMessage(error.message))}>
+        {buttonText}
       </button>
-      <button className="google-button" type="button" onClick={() => googleLogin().catch((error) => setMessage(error.message))}>
+      {mode === "login" && <button className="forgot-link" type="button" onClick={() => { setMessage(""); setMode("forgot"); }}>Forgot password?</button>}
+      {mode !== "forgot" && <button className="google-button" type="button" onClick={() => googleLogin().catch((error) => setMessage(error.message))}>
         <span className="google-logo">G</span> Continue with Google
-      </button>
+      </button>}
       {message && <p className="text-sm text-warn">{message}</p>}
     </Modal>
   );
 }
 
 function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
+  const paymentMethods = data.paymentMethods || [];
+  const binanceMethods = paymentMethods.filter(isBinanceLike);
+  const directMethods = paymentMethods.filter((item) => !isBinanceLike(item));
+  const indiaMethods = directMethods.filter(isIndiaLike);
+  const localMethods = directMethods.filter((item) => !isIndiaLike(item));
+  const binanceGateway = { id: "__binance-pay__", name: "Binance Pay", currency: "USD", group: "binance", instructions: `${binanceMethods.length} Binance payment options`, isGroup: true };
+  const mainGateways = [...localMethods, ...(binanceMethods.length ? [binanceGateway] : []), ...indiaMethods];
+  const firstGateway = mainGateways[0] || paymentMethods[0] || null;
+  const firstMethod = firstGateway?.isGroup ? binanceMethods[0] : firstGateway;
   const [step, setStep] = useState(1);
   const [variantId, setVariantId] = useState(product.variants?.[0]?.id || "");
   const [quantity, setQuantity] = useState(1);
-  const [methodId, setMethodId] = useState(data.paymentMethods?.[0]?.id || "");
+  const [gatewayId, setGatewayId] = useState(firstGateway?.id || "");
+  const [methodId, setMethodId] = useState(firstMethod?.id || "");
   const [transactionId, setTransactionId] = useState("");
   const [contact, setContact] = useState(user?.email || "");
   const [message, setMessage] = useState("");
+  const [copied, setCopied] = useState(false);
   const variant = product.variants.find((item) => item.id === variantId) || product.variants[0];
-  const method = data.paymentMethods.find((item) => item.id === methodId) || data.paymentMethods[0];
+  const activeGateway = mainGateways.find((item) => item.id === gatewayId) || firstGateway || binanceGateway;
+  const method = paymentMethods.find((item) => item.id === methodId) || firstMethod || paymentMethods[0];
+  const displayMethod = activeGateway?.isGroup ? binanceGateway : method;
+  const displayRate = displayMethod?.currency === "USD" ? 1 : Number(data.settings.currencyRates?.[displayMethod?.rateKey] || 1);
   const qty = Math.max(1, Number(quantity || 1));
   const totalUsd = Number((Number(variant?.priceUsd || 0) * qty).toFixed(2));
   const rate = method?.currency === "USD" ? 1 : Number(data.settings.currencyRates?.[method?.rateKey] || 1);
   const local = method?.currency === "USD" ? totalUsd : Math.round(totalUsd * rate);
+  const displayLocal = displayMethod?.currency === "USD" ? totalUsd : Math.round(totalUsd * displayRate);
+  const tone = paymentTone(displayMethod || method);
 
   useEffect(() => {
     if (user?.email && !contact) setContact(user.email);
@@ -681,8 +850,33 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
     setMessage("Order submitted. Admin approval pending.");
   }
 
+  async function copyAccount() {
+    try {
+      if (!method?.account) {
+        setMessage("Payment account is not set.");
+        return;
+      }
+      await copyText(method?.account || "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch (error) {
+      setMessage(error.message || "Copy failed.");
+    }
+  }
+
+  function chooseMainGateway(item) {
+    setMessage("");
+    setGatewayId(item.id);
+    if (item.isGroup) {
+      setMethodId(binanceMethods[0]?.id || "");
+      setStep(4);
+      return;
+    }
+    setMethodId(item.id);
+  }
+
   return (
-    <Modal onClose={onClose} className="checkout-modal">
+    <Modal onClose={onClose} className={`checkout-modal tone-${tone}`}>
       <div className="checkout-head">
         <div>
           <span>Secure checkout</span>
@@ -698,7 +892,7 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
             <img src={product.image || DEFAULT_IMAGE} alt={product.name} />
             <div>
               <strong>{product.name}</strong>
-              <span>{product.panelName || "Panel"} / {variant?.stockCount || 0} in stock</span>
+              <span>{product.panelName || "Panel"} / In stock</span>
             </div>
             <b>{money(totalUsd)}</b>
           </div>
@@ -719,7 +913,7 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
             </div>
           </div>
           <div className="selected-box compact">
-            <div><strong>{variant?.name}</strong><span>{durationText(variant)} / {variant?.stockCount || 0} in stock</span></div>
+            <div><strong>{variant?.name}</strong><span>{durationText(variant)} / In stock</span></div>
             <b>{money(totalUsd)}</b>
           </div>
           <button className="pay-action" type="button" onClick={() => setStep(user ? 3 : 2)}>Continue</button>
@@ -744,54 +938,107 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
           <div className="payment-shop-card">
             <Logo settings={data.settings} size="small" />
             <div><strong>{data.settings.siteName}</strong><small>{product.name} / {variant?.name} x {qty}</small></div>
-            <div className="text-right"><span>Pay</span><b>{method?.currency === "USD" ? money(totalUsd) : money(local, method?.currency)}</b></div>
+            <div className="text-right"><span>Pay</span><b>{displayMethod?.currency === "USD" ? money(totalUsd) : money(displayLocal, displayMethod?.currency)}</b></div>
           </div>
           <div className="gateway-tabs">
             <span>Select Payment</span>
-            <button type="button">Choose Gateway</button>
-            <button type="button">Help</button>
-            <button type="button">Info</button>
+            <div>
+              <button type="button">Choose Gateway</button>
+              <button type="button">Help</button>
+              <button type="button">Info</button>
+            </div>
           </div>
           <div className="gateway-list">
-            {data.paymentMethods.map((item) => (
-              <button key={item.id} className={`gateway-item ${methodId === item.id ? "active" : ""}`} type="button" onClick={() => setMethodId(item.id)}>
-                <span>{methodIcon(item)}</span>
-                <div><strong>{item.name}</strong><small>Pay with {item.currency}</small></div>
+            {mainGateways.map((item) => (
+              <button key={item.id} className={`gateway-item ${gatewayId === item.id ? "active" : ""}`} type="button" onClick={() => chooseMainGateway(item)}>
+                <PaymentLogo method={item} />
+                <div><strong>{item.name}</strong><small>{item.isGroup ? `${binanceMethods.length} crypto options` : `Pay with ${item.currency}`}</small></div>
                 <b>&gt;</b>
               </button>
             ))}
           </div>
           <div className="selected-box">
             <span>Total Amount</span>
-            <b>{method?.currency === "USD" ? money(totalUsd) : money(local, method?.currency)}</b>
+            <b>{displayMethod?.currency === "USD" ? money(totalUsd) : money(displayLocal, displayMethod?.currency)}</b>
           </div>
           <div className="checkout-actions">
             <button className="text-action" type="button" onClick={() => setStep(1)}>Back</button>
-            <button className="pay-action" type="button" onClick={() => { setMessage(""); setStep(4); }}>Pay Now</button>
+            <button className="pay-action" type="button" onClick={() => { setMessage(""); setStep(activeGateway?.isGroup ? 4 : 5); }}>{activeGateway?.isGroup ? "Choose Binance Option" : "Pay Now"}</button>
           </div>
         </div>
       )}
 
       {step === 4 && (
         <div className="checkout-step">
+          <div className="payment-shop-card">
+            <PaymentLogo method={binanceGateway} />
+            <div><strong>Binance Pay</strong><small>Select one Binance payment option</small></div>
+            <div className="text-right"><span>Pay</span><b>{money(totalUsd)}</b></div>
+          </div>
+          <div className="gateway-tabs">
+            <span>Binance Options</span>
+            <div>
+              <button type="button">USDT / BTC / Pay ID</button>
+            </div>
+          </div>
+          <div className="gateway-list">
+            {binanceMethods.map((item) => (
+              <button key={item.id} className={`gateway-item ${methodId === item.id ? "active" : ""}`} type="button" onClick={() => { setMessage(""); setMethodId(item.id); }}>
+                <PaymentLogo method={item} />
+                <div><strong>{item.name}</strong><small>{item.instructions || `Pay with ${item.currency}`}</small></div>
+                <b>&gt;</b>
+              </button>
+            ))}
+          </div>
+          {!binanceMethods.length && <p className="payment-note">No Binance payment options are enabled. Add one from Admin &gt; Payments.</p>}
+          <div className="selected-box">
+            <span>Selected Binance Method</span>
+            <b>{method?.name || "Not selected"}</b>
+          </div>
+          <div className="checkout-actions">
+            <button className="text-action" type="button" onClick={() => setStep(3)}>Back</button>
+            <button className="pay-action" type="button" disabled={!methodId} onClick={() => { setMessage(""); setStep(5); }}>Pay Now</button>
+          </div>
+        </div>
+      )}
+
+      {step === 5 && (
+        <div className="checkout-step">
           <div className="verify-header">
-            <span className="gateway-logo">{methodIcon(method)}</span>
+            <PaymentLogo method={method} />
             <div>
               <strong>{method?.name}</strong>
               <span>Submit transaction proof</span>
             </div>
             <b>{method?.currency === "USD" ? money(totalUsd) : money(local, method?.currency)}</b>
           </div>
-          <div className="payment-note verify-note">
-            <strong>Payment Instructions</strong><br />
-            Account: {method?.account || "Not set"}<br />
-            {method?.instructions}<br />
-            {method?.currency === "USD" ? "USD amount is fixed." : `Rate: ${rate} ${method?.currency}/USD`}
+          <div className="payment-receipt">
+            <div className="receipt-brand">
+              <PaymentLogo method={method} />
+              <strong>{method?.name}</strong>
+            </div>
+            <label className="transaction-field">
+              <span>Transaction ID / Payment Reference</span>
+              <input value={transactionId} onChange={(event) => setTransactionId(event.target.value)} placeholder="Transaction ID" />
+            </label>
+            <div className="copy-line receiver-line">
+              <div>
+                <small>Account / wallet</small>
+                <b>{method?.account || "Not set"}</b>
+              </div>
+              <button type="button" onClick={copyAccount}>{copied ? "Copied" : "Copy"}</button>
+            </div>
+            <div className="receipt-lines">
+              <p><span>1</span><b>Send payment</b> through the selected gateway.</p>
+              <p><span>2</span>Amount: <b>{method?.currency === "USD" ? money(totalUsd) : money(local, method?.currency)}</b></p>
+              <p><span>3</span>{method?.instructions || "Complete the payment, then submit your transaction reference."}</p>
+              <p><span>4</span>Enter the Transaction ID, then click <b>Verify Payment</b>.</p>
+            </div>
+            <small className="rate-note">{method?.currency === "USD" ? "USD amount is fixed." : `Rate: ${rate} ${method?.currency}/USD`}</small>
           </div>
-          <Field label="Transaction ID / Reference" value={transactionId} onChange={setTransactionId} />
           <Field label="Contact" value={contact} onChange={setContact} />
           <div className="checkout-actions">
-            <button className="text-action" type="button" onClick={() => setStep(3)}>Back</button>
+            <button className="text-action" type="button" onClick={() => setStep(isBinanceLike(method) ? 4 : 3)}>Back</button>
             <button className="pay-action" type="button" onClick={() => placeOrder().catch((error) => setMessage(error.message))}>Verify Payment</button>
           </div>
           {message && <p className="text-sm text-warn">{message}</p>}
@@ -804,7 +1051,7 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
 function PaymentSteps({ step }) {
   return (
     <div className="stepper premium">
-      {[1, 2, 3, 4].map((item) => <span key={item} className={item === step ? "active" : item < step ? "done" : ""}>{item}</span>)}
+      {[1, 2, 3, 4, 5].map((item) => <span key={item} className={item === step ? "active" : item < step ? "done" : ""}>{item}</span>)}
     </div>
   );
 }
@@ -863,11 +1110,11 @@ function CheckoutModal({ data, user, product, api, onClose, onLogin, onOrder }) 
           <div className="gateway-panel">
             <FieldSelect label="Select option" value={variantId} onChange={setVariantId} options={product.variants.map((item) => ({
               value: item.id,
-              label: `${item.name} - ${money(item.priceUsd)} - ${durationText(item)} - ${item.stockCount || 0} in stock`
+              label: `${item.name} - ${money(item.priceUsd)} - ${durationText(item)} - In stock`
             }))} />
             <Field label="Quantity" type="number" value={quantity} onChange={setQuantity} />
             <div className="selected-box">
-              <div><strong>{variant?.name}</strong><span>{durationText(variant)} / {variant?.stockCount || 0} in stock</span></div>
+              <div><strong>{variant?.name}</strong><span>{durationText(variant)} / In stock</span></div>
               <b>{money(variant?.priceUsd)}</b>
             </div>
             <button className="primary-action w-full" type="button" onClick={() => setStep(user ? 3 : 2)}>Continue</button>
@@ -895,7 +1142,7 @@ function CheckoutModal({ data, user, product, api, onClose, onLogin, onOrder }) 
           <div className="gateway-list">
             {data.paymentMethods.map((item) => (
               <button key={item.id} className={`gateway-item ${methodId === item.id ? "active" : ""}`} type="button" onClick={() => setMethodId(item.id)}>
-                <span>{methodIcon(item)}</span>
+                <PaymentLogo method={item} />
                 <div><strong>{item.name}</strong><small>Pay with {item.currency}</small></div>
                 <b>›</b>
               </button>
@@ -942,7 +1189,7 @@ function AdminPanel({ api, token, user, dashboard, setDashboard, loadDashboard, 
         <div className="admin-card">
           <h1>Admin login</h1>
           <Field label="Email" value={login.email} onChange={(email) => setLogin({ ...login, email })} />
-          <Field label="Password" type="password" value={login.password} onChange={(password) => setLogin({ ...login, password })} />
+          <PasswordField label="Password" value={login.password} onChange={(password) => setLogin({ ...login, password })} />
           <button className="primary-action w-full" type="button" onClick={async () => {
             try {
               const payload = await api("/api/auth/login", { method: "POST", body: login });
@@ -988,8 +1235,8 @@ function SettingsAdmin({ api, dashboard, setDashboard, setNotice }) {
       <div className="form-grid">
         <Field label="Site name" value={settings.siteName} onChange={(siteName) => setSettings({ ...settings, siteName })} />
         <Field label="Logo text" value={settings.logoText} onChange={(logoText) => setSettings({ ...settings, logoText })} />
-        <Field label="Logo URL/data" value={settings.logoUrl} onChange={(logoUrl) => setSettings({ ...settings, logoUrl })} />
-        <Field label="Background image" value={settings.backgroundImage} onChange={(backgroundImage) => setSettings({ ...settings, backgroundImage })} />
+        <ImageField label="Logo" value={settings.logoUrl} onChange={(logoUrl) => setSettings({ ...settings, logoUrl })} />
+        <ImageField label="Background image" value={settings.backgroundImage} onChange={(backgroundImage) => setSettings({ ...settings, backgroundImage })} />
         <Field label="Hero title" value={settings.heroTitle} onChange={(heroTitle) => setSettings({ ...settings, heroTitle })} />
         <Field label="Hero interval seconds" type="number" value={settings.heroIntervalSeconds} onChange={(heroIntervalSeconds) => setSettings({ ...settings, heroIntervalSeconds: Number(heroIntervalSeconds) })} />
         <Field label="BDT per USD" type="number" value={settings.currencyRates?.BDT} onChange={(BDT) => setSettings({ ...settings, currencyRates: { ...settings.currencyRates, BDT: Number(BDT) } })} />
@@ -1012,7 +1259,7 @@ function HeroSlidesEditor({ settings, setSettings }) {
         <div className="nested-card" key={index}>
           <Field label="Title" value={slide.title} onChange={(title) => setSettings({ ...settings, heroSlides: slides.map((item, i) => i === index ? { ...item, title } : item) })} />
           <Field label="Subtitle" value={slide.subtitle} onChange={(subtitle) => setSettings({ ...settings, heroSlides: slides.map((item, i) => i === index ? { ...item, subtitle } : item) })} />
-          <Field label="Image URL/data" value={slide.image} onChange={(image) => setSettings({ ...settings, heroSlides: slides.map((item, i) => i === index ? { ...item, image } : item) })} />
+          <ImageField label="Slide image" value={slide.image} onChange={(image) => setSettings({ ...settings, heroSlides: slides.map((item, i) => i === index ? { ...item, image } : item) })} />
           <button className="danger-action" type="button" onClick={() => setSettings({ ...settings, heroSlides: slides.filter((_, i) => i !== index) })}>Delete</button>
         </div>
       ))}
@@ -1028,7 +1275,7 @@ function PaymentsAdmin({ api, dashboard, setDashboard, setNotice }) {
       setDashboard({ ...dashboard, paymentMethods: payload.paymentMethods });
       setNotice("Payment methods saved.");
     }}>
-      <button className="secondary-action mb-4" type="button" onClick={() => setMethods([...methods, { id: `method-${Date.now()}`, name: "New Method", currency: "USD", rateKey: "USD", account: "", instructions: "", enabled: true }])}>Add payment method</button>
+      <button className="secondary-action mb-4" type="button" onClick={() => setMethods([...methods, { id: `method-${Date.now()}`, name: "New Method", currency: "USD", rateKey: "USD", account: "", logoUrl: "", group: "main", instructions: "", enabled: true }])}>Add payment method</button>
       <div className="grid gap-4">
         {methods.map((method, index) => <PaymentEditor key={index} method={method} onChange={(next) => setMethods(methods.map((item, i) => i === index ? next : item))} onDelete={() => setMethods(methods.filter((_, i) => i !== index))} />)}
       </div>
@@ -1045,6 +1292,8 @@ function PaymentEditor({ method, onChange, onDelete }) {
         <Field label="Currency" value={method.currency} onChange={(currency) => onChange({ ...method, currency })} />
         <Field label="Rate key" value={method.rateKey} onChange={(rateKey) => onChange({ ...method, rateKey })} />
         <Field label="Account" value={method.account} onChange={(account) => onChange({ ...method, account })} />
+        <FieldSelect label="Group" value={method.group || "main"} onChange={(group) => onChange({ ...method, group })} options={[{ value: "main", label: "Main payment list" }, { value: "binance", label: "Inside Binance Pay" }]} />
+        <ImageField label="Payment logo" value={method.logoUrl} onChange={(logoUrl) => onChange({ ...method, logoUrl })} />
       </div>
       <TextArea label="Instructions" value={method.instructions} onChange={(instructions) => onChange({ ...method, instructions })} />
       <label className="check-line"><input type="checkbox" checked={method.enabled} onChange={(e) => onChange({ ...method, enabled: e.target.checked })} /> Enabled</label>
@@ -1119,7 +1368,7 @@ function SectionEditor({ api, dashboard, section, setDashboard, setNotice }) {
       <div className="form-grid mt-4">
         <Field label="Section title" value={draft.title} onChange={(title) => setDraft({ ...draft, title })} />
         <Field label="Sort order" type="number" value={draft.sortOrder} onChange={(sortOrder) => setDraft({ ...draft, sortOrder: Number(sortOrder) })} />
-        <Field label="Image URL/data" value={draft.image} onChange={(image) => setDraft({ ...draft, image })} />
+        <ImageField label="Section image" value={draft.image} onChange={(image) => setDraft({ ...draft, image })} />
       </div>
       <TextArea label="Subtitle" value={draft.subtitle} onChange={(subtitle) => setDraft({ ...draft, subtitle })} />
       <label className="check-line"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> Enabled on storefront</label>
@@ -1146,7 +1395,6 @@ function SectionEditor({ api, dashboard, section, setDashboard, setNotice }) {
 
 function ProductEditor({ api, dashboard, product, setDashboard, setNotice }) {
   const [draft, setDraft] = useState(product);
-  const variantsText = (draft.variants || []).map((item) => `${item.name}|${item.priceUsd}|${item.durationDays || 0}|${item.description || ""}`).join("\n");
   return (
     <div className="nested-card">
       <div className="flex items-center justify-between gap-3"><h3 className="font-black">{product.name}</h3><span className="panel-chip">{product.panelName}</span></div>
@@ -1155,12 +1403,12 @@ function ProductEditor({ api, dashboard, product, setDashboard, setNotice }) {
         <Field label="Name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} />
         <Field label="Panel name" value={draft.panelName} onChange={(panelName) => setDraft({ ...draft, panelName })} />
         <Field label="Badge" value={draft.badge} onChange={(badge) => setDraft({ ...draft, badge })} />
-        <Field label="Image URL/data" value={draft.image} onChange={(image) => setDraft({ ...draft, image })} />
+        <ImageField label="Product image" value={draft.image} onChange={(image) => setDraft({ ...draft, image })} />
         <Field label="YouTube demo URL" value={draft.demoVideoUrl} onChange={(demoVideoUrl) => setDraft({ ...draft, demoVideoUrl })} />
       </div>
       <TextArea label="Short description" value={draft.shortDescription} onChange={(shortDescription) => setDraft({ ...draft, shortDescription })} />
       <TextArea label="Features, one per line" value={(draft.features || []).join("\n")} onChange={(value) => setDraft({ ...draft, features: value.split("\n").map((line) => line.trim()).filter(Boolean) })} />
-      <TextArea label="Variants: name|priceUsd|durationDays|description" value={variantsText} onChange={(value) => setDraft({ ...draft, variants: value.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => { const [name, priceUsd, durationDays, ...description] = line.split("|"); return { name, priceUsd: Number(priceUsd || 0), durationDays: Number(durationDays || 0), description: description.join("|") }; }) })} />
+      <VariantsEditor variants={draft.variants || []} onChange={(variants) => setDraft({ ...draft, variants })} />
       <label className="check-line"><input type="checkbox" checked={draft.enabled} onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} /> Enabled</label>
       <div className="flex gap-3">
         <button className="primary-action compact" type="button" onClick={async () => {
@@ -1295,7 +1543,7 @@ function SecurityAdmin({ api, dashboard, setNotice }) {
       setNotice("Admin password changed.");
     }}>
       <p className="mb-4 text-slate-400">Default admin: {dashboard.defaultCredentials.adminEmail} / {dashboard.defaultCredentials.adminPassword}</p>
-      <Field label="New admin password" type="password" value={newPassword} onChange={setNewPassword} />
+      <PasswordField label="New admin password" value={newPassword} onChange={setNewPassword} />
     </AdminCard>
   );
 }
@@ -1337,9 +1585,22 @@ function DemoModal({ product, onClose }) {
 function HelpDock({ settings }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="fixed bottom-5 right-5 z-40">
-      {open && <div className="mb-3 grid overflow-hidden rounded-lg border border-white/10 bg-panel shadow-deep"><a className="px-4 py-3" href={settings.supportWhatsApp || "#"} target="_blank" rel="noreferrer">WhatsApp</a><a className="px-4 py-3" href={settings.supportTelegram || "#"} target="_blank" rel="noreferrer">Telegram</a></div>}
-      <button className="help-button" type="button" onClick={() => setOpen(!open)}>Help</button>
+    <div className="help-dock">
+      {open && (
+        <div className="help-menu">
+          <a className="help-channel whatsapp" href={settings.supportWhatsApp || "#"} target="_blank" rel="noreferrer">
+            <BrandIcon type="whatsapp" />
+            <span>WhatsApp</span>
+          </a>
+          <a className="help-channel telegram" href={settings.supportTelegram || "#"} target="_blank" rel="noreferrer">
+            <BrandIcon type="telegram" />
+            <span>Telegram</span>
+          </a>
+        </div>
+      )}
+      <button className="help-button" type="button" onClick={() => setOpen(!open)} aria-label="Support help">
+        <BrandIcon type="help" />
+      </button>
     </div>
   );
 }
@@ -1357,6 +1618,74 @@ function Modal({ children, onClose, className = "" }) {
 
 function Field({ label, value, onChange, type = "text" }) {
   return <label className="field"><span>{label}</span><input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} /></label>;
+}
+
+function PasswordField({ label, value, onChange }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="field password-field">
+      <span>{label}</span>
+      <div className="password-wrap">
+        <input type={visible ? "text" : "password"} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+        <button type="button" onClick={() => setVisible((show) => !show)}>{visible ? "Hide" : "Show"}</button>
+      </div>
+    </label>
+  );
+}
+
+function ImageField({ label, value, onChange }) {
+  const [message, setMessage] = useState("");
+  async function handleFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setMessage("Uploading...");
+      onChange(await readImageFile(file));
+      setMessage("Uploaded from gallery.");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  return (
+    <div className="image-field">
+      <Field label={`${label} URL/data`} value={value} onChange={onChange} />
+      <div className="image-tools">
+        <label className="upload-action">
+          Upload from gallery
+          <input type="file" accept="image/*" onChange={handleFile} />
+        </label>
+        {value && <img src={value} alt={label} />}
+      </div>
+      {message && <small>{message}</small>}
+    </div>
+  );
+}
+
+function VariantsEditor({ variants, onChange }) {
+  function update(index, patch) {
+    onChange(variants.map((variant, i) => i === index ? { ...variant, ...patch } : variant));
+  }
+
+  return (
+    <div className="variants-editor">
+      <div className="variants-head">
+        <h3>Variants</h3>
+        <button className="secondary-action compact" type="button" onClick={() => onChange([...variants, { id: "", name: "New Variant", durationDays: 1, priceUsd: 1, description: "", stockKeys: [] }])}>Add variant</button>
+      </div>
+      {variants.map((variant, index) => (
+        <div className="variant-row" key={variant.id || index}>
+          <Field label="Variant name" value={variant.name} onChange={(name) => update(index, { name })} />
+          <Field label="Days" type="number" value={variant.durationDays || 0} onChange={(durationDays) => update(index, { durationDays: Number(durationDays || 0) })} />
+          <Field label="Price USD" type="number" value={variant.priceUsd || 0} onChange={(priceUsd) => update(index, { priceUsd: Number(priceUsd || 0) })} />
+          <Field label="Description" value={variant.description || ""} onChange={(description) => update(index, { description })} />
+          <button className="danger-action compact" type="button" onClick={() => onChange(variants.filter((_, i) => i !== index))}>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function TextArea({ label, value, onChange }) {
