@@ -1,4 +1,4 @@
-const CACHE_NAME = "aci-store-pwa-v1";
+const CACHE_NAME = "aci-store-pwa-v2";
 const CORE_ASSETS = [
   "/",
   "/manifest.webmanifest",
@@ -30,6 +30,11 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+
+  if (request.mode === "navigate" && url.pathname.startsWith("/admin")) {
+    event.respondWith(fetch(request, { cache: "no-store" }));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(
