@@ -3,12 +3,39 @@ import { useEffect, useState } from "react";
 const API_BASE = String(import.meta.env.VITE_API_URL || window.API_BASE_URL || "").replace(/\/$/, "");
 const DEFAULT_IMAGE = "/assets/marketplace-bg.png";
 
+function isStandaloneDisplay() {
+  return Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone);
+}
+
 function money(amount, code = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: code,
-    maximumFractionDigits: code === "USD" ? 2 : 0
-  }).format(Number(amount || 0));
+  const currency = String(code || "USD").toUpperCase();
+  const decimals = currencyDecimals(currency);
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: decimals
+    }).format(Number(amount || 0));
+  } catch {
+    return `${new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    }).format(Number(amount || 0))} ${currency}`;
+  }
+}
+
+function currencyDecimals(code = "USD") {
+  const currency = String(code || "USD").toUpperCase();
+  if (currency === "BTC") return 8;
+  if (currency === "USDT" || currency === "USD") return 2;
+  return 0;
+}
+
+function convertForDisplay(totalUsd, method, rates) {
+  const currency = String(method?.currency || "USD").toUpperCase();
+  const rateKey = String(method?.rateKey || currency).toUpperCase();
+  const rate = currency === "USD" ? 1 : Number(rates?.[rateKey] || 1);
+  return Number((Number(totalUsd || 0) * rate).toFixed(currencyDecimals(currency)));
 }
 
 function durationText(variant) {
@@ -95,6 +122,18 @@ function youtubeEmbed(url) {
   } catch {
     return "";
   }
+}
+
+function supportHref(type, value) {
+  const text = String(value || "").trim();
+  if (!text) return "#";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (type === "whatsapp") {
+    const phone = text.replace(/[^\d+]/g, "").replace(/^\+/, "");
+    return phone ? `https://wa.me/${phone}` : "#";
+  }
+  const username = text.replace(/^@/, "").replace(/^t\.me\//i, "");
+  return username ? `https://t.me/${username}` : "#";
 }
 
 function Logo({ settings, size = "normal" }) {
@@ -184,8 +223,11 @@ function App() {
   const [introVisible, setIntroVisible] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [routeKey, setRouteKey] = useState(() => `${window.location.pathname}${window.location.hash}`);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [appInstalled, setAppInstalled] = useState(isStandaloneDisplay);
+  const [installMessage, setInstallMessage] = useState("");
 
-  const isAdminRoute = routeKey.startsWith("/admin") || routeKey.endsWith("#admin");
+  const isAdminRoute = routeKey.startsWith("/admin");
 
   async function api(path, options = {}) {
     const response = await fetch(`${API_BASE}${path}`, {
@@ -239,6 +281,25 @@ function App() {
     setDashboard(payload);
   }
 
+  async function requestInstall() {
+    if (appInstalled) return;
+    if (!installPrompt) {
+      setInstallMessage("Install from browser menu > Add to Home Screen.");
+      setTimeout(() => setInstallMessage(""), 3600);
+      return;
+    }
+    installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    setInstallPrompt(null);
+    if (choice?.outcome === "accepted") {
+      setAppInstalled(true);
+      setInstallMessage("App install started.");
+    } else {
+      setInstallMessage("Install cancelled.");
+    }
+    setTimeout(() => setInstallMessage(""), 2400);
+  }
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("panel_theme", theme);
@@ -259,6 +320,30 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const media = window.matchMedia?.("(display-mode: standalone)");
+    const updateInstalled = () => setAppInstalled(isStandaloneDisplay());
+    const capturePrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+      setAppInstalled(false);
+    };
+    const installed = () => {
+      setInstallPrompt(null);
+      setAppInstalled(true);
+      setInstallMessage("");
+    };
+    updateInstalled();
+    window.addEventListener("beforeinstallprompt", capturePrompt);
+    window.addEventListener("appinstalled", installed);
+    media?.addEventListener?.("change", updateInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", capturePrompt);
+      window.removeEventListener("appinstalled", installed);
+      media?.removeEventListener?.("change", updateInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
     loadAccount();
   }, [token]);
 
@@ -267,9 +352,15 @@ function App() {
   }, [isAdminRoute, token]);
 
   useEffect(() => {
-    const timer = setInterval(() => loadBootstrap().catch(() => {}), 5000);
+    const timer = setInterval(() => loadBootstrap().catch(() => {}), 2000);
     return () => clearInterval(timer);
   }, [token]);
+
+  useEffect(() => {
+    if (!isAdminRoute || !token) return undefined;
+    const timer = setInterval(() => loadDashboard().catch(() => {}), 1500);
+    return () => clearInterval(timer);
+  }, [isAdminRoute, token]);
 
   useEffect(() => {
     if (!data || isAdminRoute || data.settings?.introAnimation === false) {
@@ -299,7 +390,12 @@ function App() {
         onAuth={() => { setAuthMode("login"); setAuthOpen(true); }}
         onHistory={() => setHistoryOpen(true)}
         onLogout={logout}
+        onInstall={requestInstall}
+        showInstall={!isAdminRoute && !appInstalled}
+        installReady={Boolean(installPrompt)}
       />
+
+      {installMessage && !isAdminRoute && <div className="install-toast">{installMessage}</div>}
 
       {introVisible && !isAdminRoute && <IntroSplash settings={settings} />}
 
@@ -382,7 +478,7 @@ function App() {
   );
 }
 
-function HeaderShell({ settings, user, isAdminRoute, theme, orders, onTheme, onAuth, onHistory, onLogout }) {
+function HeaderShell({ settings, user, isAdminRoute, theme, orders, onTheme, onAuth, onHistory, onLogout, onInstall, showInstall, installReady }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const orderCount = orders?.length || 0;
   return (
@@ -394,7 +490,7 @@ function HeaderShell({ settings, user, isAdminRoute, theme, orders, onTheme, onA
         </a>
         <nav className="shop-actions">
           {isAdminRoute ? <a className="icon-button" href="/" aria-label="Storefront"><span className="icon-home" /></a> : null}
-          {!isAdminRoute && user?.role === "admin" ? <a className="icon-button" href="/#admin" aria-label="Admin panel"><span className="icon-settings" /></a> : null}
+          {showInstall ? <button className={`icon-button install-action ${installReady ? "ready" : ""}`} type="button" onClick={onInstall} aria-label="Install app"><span className="icon-install" /></button> : null}
           <button className="icon-button" type="button" onClick={onTheme} aria-label="Toggle theme"><span className={theme === "dark" ? "icon-sun" : "icon-moon"} /></button>
           {user ? (
             <div className="user-menu">
@@ -407,7 +503,6 @@ function HeaderShell({ settings, user, isAdminRoute, theme, orders, onTheme, onA
                   <small>Signed in</small>
                   <strong>{user.email}</strong>
                   <button type="button" onClick={() => { setMenuOpen(false); onHistory(); }}>History {orderCount ? `(${orderCount})` : ""}</button>
-                  {user.role === "admin" && <a href="/#admin" onClick={() => setMenuOpen(false)}>Admin Panel</a>}
                   <button type="button" onClick={() => { setMenuOpen(false); onLogout(); }}>Logout</button>
                 </div>
               )}
@@ -443,7 +538,6 @@ function Header({ settings, user, isAdminRoute, theme, onTheme, onAuth, onLogout
         </a>
         <nav className="shop-actions">
           {isAdminRoute ? <a className="icon-button" href="/" aria-label="Storefront"><span className="icon-home" /></a> : null}
-          {!isAdminRoute && user?.role === "admin" ? <a className="icon-button" href="/#admin" aria-label="Admin panel"><span className="icon-settings" /></a> : null}
           <button className="icon-pill" type="button" onClick={onTheme}>{theme === "dark" ? "☀" : "●"}</button>
           <button className="icon-button primary" type="button" onClick={user ? onLogout : onAuth} aria-label={user ? "Logout" : "Login"}><span className="icon-user" /></button>
         </nav>
@@ -517,10 +611,6 @@ function StorefrontShell({ data, user, orders, setAuthOpen, setAuthMode, openDem
 
       <footer className="shop-footer">
         <strong>{settings.siteName || "ACI STORE"}</strong>
-        <div>
-          <a href="#products">Products</a>
-          <a href="/#admin">Admin</a>
-        </div>
         <p>&copy; 2026 {settings.siteName || "ACI STORE"}. All rights reserved.</p>
       </footer>
     </main>
@@ -669,10 +759,6 @@ function Storefront({ data, user, orders, setAuthOpen, setAuthMode, openDemo, op
 
       <footer className="border-t border-white/10 bg-panel/70 px-4 py-8 text-center text-slate-400">
         <strong className="text-white">{settings.siteName || "ACI STORE"}</strong>
-        <div className="mt-3 flex justify-center gap-4">
-          <a href="#products">Products</a>
-          <a href="/#admin">Admin</a>
-        </div>
         <p className="mt-3 text-sm">&copy; 2026 {settings.siteName || "ACI STORE"}. All rights reserved.</p>
       </footer>
     </main>
@@ -812,25 +898,23 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
   const [gatewayId, setGatewayId] = useState(firstGateway?.id || "");
   const [methodId, setMethodId] = useState(firstMethod?.id || "");
   const [transactionId, setTransactionId] = useState("");
-  const [contact, setContact] = useState(user?.email || "");
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
   const variant = product.variants.find((item) => item.id === variantId) || product.variants[0];
   const activeGateway = mainGateways.find((item) => item.id === gatewayId) || firstGateway || binanceGateway;
   const method = paymentMethods.find((item) => item.id === methodId) || firstMethod || paymentMethods[0];
   const displayMethod = activeGateway?.isGroup ? binanceGateway : method;
-  const displayRate = displayMethod?.currency === "USD" ? 1 : Number(data.settings.currencyRates?.[displayMethod?.rateKey] || 1);
   const qty = Math.max(1, Number(quantity || 1));
   const totalUsd = Number((Number(variant?.priceUsd || 0) * qty).toFixed(2));
-  const rate = method?.currency === "USD" ? 1 : Number(data.settings.currencyRates?.[method?.rateKey] || 1);
-  const local = method?.currency === "USD" ? totalUsd : Math.round(totalUsd * rate);
-  const displayLocal = displayMethod?.currency === "USD" ? totalUsd : Math.round(totalUsd * displayRate);
+  const local = convertForDisplay(totalUsd, method, data.settings.currencyRates);
+  const displayLocal = convertForDisplay(totalUsd, displayMethod, data.settings.currencyRates);
   const tone = paymentTone(displayMethod || method);
+  const proofLabel = isBinanceLike(method) ? "Order ID" : "Transaction ID / Payment Reference";
+  const proofPlaceholder = isBinanceLike(method) ? "Order ID" : "Transaction ID";
 
   useEffect(() => {
-    if (user?.email && !contact) setContact(user.email);
     if (user && step === 2) setStep(3);
-  }, [user, step, contact]);
+  }, [user, step]);
 
   async function placeOrder() {
     if (!user) {
@@ -838,13 +922,13 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
       return;
     }
     if (!transactionId.trim()) {
-      setMessage("Transaction ID is required.");
+      setMessage(`${isBinanceLike(method) ? "Order ID" : "Transaction ID"} is required.`);
       return;
     }
     setMessage("Submitting payment proof...");
     const payload = await api("/api/orders", {
       method: "POST",
-      body: { productId: product.id, variantId, quantity: qty, paymentMethodId: methodId, transactionId, contact }
+      body: { productId: product.id, variantId, quantity: qty, paymentMethodId: methodId, transactionId, contact: user?.email || "" }
     });
     onOrder(payload.order);
     setMessage("Order submitted. Admin approval pending.");
@@ -938,7 +1022,7 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
           <div className="payment-shop-card">
             <Logo settings={data.settings} size="small" />
             <div><strong>{data.settings.siteName}</strong><small>{product.name} / {variant?.name} x {qty}</small></div>
-            <div className="text-right"><span>Pay</span><b>{displayMethod?.currency === "USD" ? money(totalUsd) : money(displayLocal, displayMethod?.currency)}</b></div>
+            <div className="text-right"><span>Pay Total Amount</span><b>{displayMethod?.currency === "USD" ? money(totalUsd) : money(displayLocal, displayMethod?.currency)}</b></div>
           </div>
           <div className="gateway-tabs">
             <span>Select Payment</span>
@@ -957,13 +1041,9 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
               </button>
             ))}
           </div>
-          <div className="selected-box">
-            <span>Total Amount</span>
-            <b>{displayMethod?.currency === "USD" ? money(totalUsd) : money(displayLocal, displayMethod?.currency)}</b>
-          </div>
-          <div className="checkout-actions">
+          <div className="checkout-actions gateway-actions">
             <button className="text-action" type="button" onClick={() => setStep(1)}>Back</button>
-            <button className="pay-action" type="button" onClick={() => { setMessage(""); setStep(activeGateway?.isGroup ? 4 : 5); }}>{activeGateway?.isGroup ? "Choose Binance Option" : "Pay Now"}</button>
+            <button className="pay-action" type="button" onClick={() => { setMessage(""); setStep(activeGateway?.isGroup ? 4 : 5); }}><span className="icon-pay" />{activeGateway?.isGroup ? "Choose Binance Option" : "Pay Now"}</button>
           </div>
         </div>
       )}
@@ -973,7 +1053,7 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
           <div className="payment-shop-card">
             <PaymentLogo method={binanceGateway} />
             <div><strong>Binance Pay</strong><small>Select one Binance payment option</small></div>
-            <div className="text-right"><span>Pay</span><b>{money(totalUsd)}</b></div>
+            <div className="text-right"><span>Pay Total Amount</span><b>{money(totalUsd)}</b></div>
           </div>
           <div className="gateway-tabs">
             <span>Binance Options</span>
@@ -997,29 +1077,20 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
           </div>
           <div className="checkout-actions">
             <button className="text-action" type="button" onClick={() => setStep(3)}>Back</button>
-            <button className="pay-action" type="button" disabled={!methodId} onClick={() => { setMessage(""); setStep(5); }}>Pay Now</button>
+            <button className="pay-action" type="button" disabled={!methodId} onClick={() => { setMessage(""); setStep(5); }}><span className="icon-pay" />Pay Now</button>
           </div>
         </div>
       )}
 
       {step === 5 && (
         <div className="checkout-step">
-          <div className="verify-header">
-            <PaymentLogo method={method} />
-            <div>
-              <strong>{method?.name}</strong>
-              <span>Submit transaction proof</span>
-            </div>
-            <b>{method?.currency === "USD" ? money(totalUsd) : money(local, method?.currency)}</b>
-          </div>
           <div className="payment-receipt">
             <div className="receipt-brand">
               <PaymentLogo method={method} />
-              <strong>{method?.name}</strong>
             </div>
             <label className="transaction-field">
-              <span>Transaction ID / Payment Reference</span>
-              <input value={transactionId} onChange={(event) => setTransactionId(event.target.value)} placeholder="Transaction ID" />
+              <span>{proofLabel}</span>
+              <input value={transactionId} onChange={(event) => setTransactionId(event.target.value)} placeholder={proofPlaceholder} />
             </label>
             <div className="copy-line receiver-line">
               <div>
@@ -1030,13 +1101,11 @@ function CheckoutFlow({ data, user, product, api, onClose, onLogin, onOrder }) {
             </div>
             <div className="receipt-lines">
               <p><span>1</span><b>Send payment</b> through the selected gateway.</p>
-              <p><span>2</span>Amount: <b>{method?.currency === "USD" ? money(totalUsd) : money(local, method?.currency)}</b></p>
+              <p><span>2</span>Amount: <b>{money(local, method?.currency || "USD")}</b></p>
               <p><span>3</span>{method?.instructions || "Complete the payment, then submit your transaction reference."}</p>
-              <p><span>4</span>Enter the Transaction ID, then click <b>Verify Payment</b>.</p>
+              <p><span>4</span>Enter the {isBinanceLike(method) ? "Order ID" : "Transaction ID"}, then click <b>Verify Payment</b>.</p>
             </div>
-            <small className="rate-note">{method?.currency === "USD" ? "USD amount is fixed." : `Rate: ${rate} ${method?.currency}/USD`}</small>
           </div>
-          <Field label="Contact" value={contact} onChange={setContact} />
           <div className="checkout-actions">
             <button className="text-action" type="button" onClick={() => setStep(isBinanceLike(method) ? 4 : 3)}>Back</button>
             <button className="pay-action" type="button" onClick={() => placeOrder().catch((error) => setMessage(error.message))}>Verify Payment</button>
@@ -1062,18 +1131,16 @@ function CheckoutModal({ data, user, product, api, onClose, onLogin, onOrder }) 
   const [quantity, setQuantity] = useState(1);
   const [methodId, setMethodId] = useState(data.paymentMethods?.[0]?.id || "");
   const [transactionId, setTransactionId] = useState("");
-  const [contact, setContact] = useState(user?.email || "");
   const [message, setMessage] = useState("");
   const variant = product.variants.find((item) => item.id === variantId) || product.variants[0];
   const method = data.paymentMethods.find((item) => item.id === methodId) || data.paymentMethods[0];
   const totalUsd = Number((Number(variant?.priceUsd || 0) * Math.max(1, Number(quantity || 1))).toFixed(2));
-  const rate = method?.currency === "USD" ? 1 : Number(data.settings.currencyRates?.[method?.rateKey] || 1);
-  const local = method?.currency === "USD" ? totalUsd : Math.round(totalUsd * rate);
+  const local = convertForDisplay(totalUsd, method, data.settings.currencyRates);
+  const proofLabel = isBinanceLike(method) ? "Order ID" : "Transaction ID / Reference";
 
   useEffect(() => {
-    if (user?.email && !contact) setContact(user.email);
     if (user && step === 2) setStep(3);
-  }, [user, step, contact]);
+  }, [user, step]);
 
   async function placeOrder() {
     if (!user) {
@@ -1081,13 +1148,13 @@ function CheckoutModal({ data, user, product, api, onClose, onLogin, onOrder }) 
       return;
     }
     if (!transactionId.trim()) {
-      setMessage("Transaction ID required.");
+      setMessage(`${isBinanceLike(method) ? "Order ID" : "Transaction ID"} required.`);
       return;
     }
     setMessage("Submitting...");
     const payload = await api("/api/orders", {
       method: "POST",
-      body: { productId: product.id, variantId, quantity, paymentMethodId: methodId, transactionId, contact }
+      body: { productId: product.id, variantId, quantity, paymentMethodId: methodId, transactionId, contact: user?.email || "" }
     });
     onOrder(payload.order);
     setMessage("Order submitted. Admin approval pending.");
@@ -1150,16 +1217,14 @@ function CheckoutModal({ data, user, product, api, onClose, onLogin, onOrder }) 
           </div>
           <div className="selected-box">
             <span>Total amount</span>
-            <b>{method?.currency === "USD" ? money(totalUsd) : money(local, method?.currency)}</b>
+            <b>{money(local, method?.currency || "USD")}</b>
           </div>
           <div className="payment-note">
             <strong>{method?.name}</strong><br />
             Account: {method?.account || "Not set"}<br />
-            {method?.instructions}<br />
-            {method?.currency === "USD" ? "USD amount is fixed." : `Rate: ${rate} ${method?.currency}/USD`}
+            {method?.instructions}
           </div>
-          <Field label="Transaction ID / Reference" value={transactionId} onChange={setTransactionId} />
-          <Field label="Contact" value={contact} onChange={setContact} />
+          <Field label={proofLabel} value={transactionId} onChange={setTransactionId} />
           <div className="grid grid-cols-[auto_1fr] gap-3">
             <button className="secondary-action" type="button" onClick={() => setStep(1)}>Back</button>
             <button className="primary-action w-full" type="button" onClick={() => placeOrder().catch((error) => setMessage(error.message))}>Verify Payment</button>
@@ -1217,9 +1282,9 @@ function AdminPanel({ api, token, user, dashboard, setDashboard, loadDashboard, 
       {tab === "payments" && <PaymentsAdmin api={api} dashboard={dashboard} setDashboard={setDashboard} setNotice={setNotice} />}
       {tab === "products" && <ProductsAdmin api={api} dashboard={dashboard} setDashboard={setDashboard} setNotice={setNotice} loadDashboard={loadDashboard} />}
       {tab === "stock" && <StockAdmin api={api} dashboard={dashboard} setDashboard={setDashboard} setNotice={setNotice} />}
-      {tab === "orders" && <OrdersAdmin api={api} dashboard={dashboard} setDashboard={setDashboard} setNotice={setNotice} />}
+      {tab === "orders" && <OrdersAdmin api={api} dashboard={dashboard} setDashboard={setDashboard} setNotice={setNotice} loadDashboard={loadDashboard} />}
       {tab === "users" && <UsersAdmin api={api} dashboard={dashboard} setDashboard={setDashboard} setNotice={setNotice} />}
-      {tab === "security" && <SecurityAdmin api={api} dashboard={dashboard} setNotice={setNotice} />}
+      {tab === "security" && <SecurityAdmin api={api} dashboard={dashboard} setDashboard={setDashboard} setNotice={setNotice} />}
     </main>
   );
 }
@@ -1241,8 +1306,8 @@ function SettingsAdmin({ api, dashboard, setDashboard, setNotice }) {
         <Field label="Hero interval seconds" type="number" value={settings.heroIntervalSeconds} onChange={(heroIntervalSeconds) => setSettings({ ...settings, heroIntervalSeconds: Number(heroIntervalSeconds) })} />
         <Field label="BDT per USD" type="number" value={settings.currencyRates?.BDT} onChange={(BDT) => setSettings({ ...settings, currencyRates: { ...settings.currencyRates, BDT: Number(BDT) } })} />
         <Field label="INR per USD" type="number" value={settings.currencyRates?.INR} onChange={(INR) => setSettings({ ...settings, currencyRates: { ...settings.currencyRates, INR: Number(INR) } })} />
-        <Field label="WhatsApp help" value={settings.supportWhatsApp} onChange={(supportWhatsApp) => setSettings({ ...settings, supportWhatsApp })} />
-        <Field label="Telegram help" value={settings.supportTelegram} onChange={(supportTelegram) => setSettings({ ...settings, supportTelegram })} />
+        <Field label="WhatsApp number/link" value={settings.supportWhatsApp} onChange={(supportWhatsApp) => setSettings({ ...settings, supportWhatsApp })} />
+        <Field label="Telegram username/link" value={settings.supportTelegram} onChange={(supportTelegram) => setSettings({ ...settings, supportTelegram })} />
       </div>
       <TextArea label="Hero subtitle" value={settings.heroSubtitle} onChange={(heroSubtitle) => setSettings({ ...settings, heroSubtitle })} />
       <HeroSlidesEditor settings={settings} setSettings={setSettings} />
@@ -1473,12 +1538,13 @@ function StockAdmin({ api, dashboard, setDashboard, setNotice }) {
   );
 }
 
-function OrdersAdmin({ api, dashboard, setDashboard, setNotice }) {
+function OrdersAdmin({ api, dashboard, setDashboard, setNotice, loadDashboard }) {
   const [selected, setSelected] = useState([]);
   async function saveOrder(order, status) {
     const payload = await api(`/api/admin/orders/${order.id}`, { method: "PUT", body: { status, adminNote: order.adminNote || "" } });
     setDashboard({ ...dashboard, orders: dashboard.orders.map((item) => item.id === order.id ? payload.order : item) });
     setNotice("Order updated.");
+    loadDashboard?.().catch(() => {});
   }
   return (
     <AdminCard title="Orders" action="Delete Selected" onAction={async () => {
@@ -1486,6 +1552,7 @@ function OrdersAdmin({ api, dashboard, setDashboard, setNotice }) {
       setDashboard({ ...dashboard, orders: dashboard.orders.filter((item) => !selected.includes(item.id)) });
       setSelected([]);
       setNotice(`${payload.deleted} orders deleted.`);
+      loadDashboard?.().catch(() => {});
     }}>
       <div className="table-wrap">
         <table>
@@ -1534,15 +1601,29 @@ function UserEditor({ user, api, dashboard, setDashboard, setNotice }) {
   );
 }
 
-function SecurityAdmin({ api, dashboard, setNotice }) {
+function SecurityAdmin({ api, dashboard, setDashboard, setNotice }) {
   const [newPassword, setNewPassword] = useState("");
+  const adminUser = dashboard.users.find((item) => item.role === "admin") || dashboard.users[0];
+  const [adminEmail, setAdminEmail] = useState(adminUser?.email || dashboard.defaultCredentials.adminEmail || "");
   return (
     <AdminCard title="Security" action="Change Password" onAction={async () => {
       await api("/api/admin/password", { method: "PUT", body: { newPassword } });
       setNewPassword("");
       setNotice("Admin password changed.");
     }}>
-      <p className="mb-4 text-slate-400">Default admin: {dashboard.defaultCredentials.adminEmail} / {dashboard.defaultCredentials.adminPassword}</p>
+      <p className="mb-4 text-slate-400">Default admin password: {dashboard.defaultCredentials.adminPassword}</p>
+      <div className="nested-card mb-4">
+        <div className="form-grid">
+          <Field label="Admin login Gmail" value={adminEmail} onChange={setAdminEmail} />
+          <div className="grid content-end">
+            <button className="primary-action compact" type="button" onClick={async () => {
+              const payload = await api("/api/admin/account", { method: "PUT", body: { email: adminEmail } });
+              setDashboard({ ...dashboard, users: dashboard.users.map((item) => item.id === payload.user.id ? payload.user : item), defaultCredentials: { ...dashboard.defaultCredentials, adminEmail: payload.user.email } });
+              setNotice("Admin login Gmail changed.");
+            }}>Save Admin Gmail</button>
+          </div>
+        </div>
+      </div>
       <PasswordField label="New admin password" value={newPassword} onChange={setNewPassword} />
     </AdminCard>
   );
@@ -1588,11 +1669,11 @@ function HelpDock({ settings }) {
     <div className="help-dock">
       {open && (
         <div className="help-menu">
-          <a className="help-channel whatsapp" href={settings.supportWhatsApp || "#"} target="_blank" rel="noreferrer">
+          <a className="help-channel whatsapp" href={supportHref("whatsapp", settings.supportWhatsApp)} target="_blank" rel="noreferrer">
             <BrandIcon type="whatsapp" />
             <span>WhatsApp</span>
           </a>
-          <a className="help-channel telegram" href={settings.supportTelegram || "#"} target="_blank" rel="noreferrer">
+          <a className="help-channel telegram" href={supportHref("telegram", settings.supportTelegram)} target="_blank" rel="noreferrer">
             <BrandIcon type="telegram" />
             <span>Telegram</span>
           </a>

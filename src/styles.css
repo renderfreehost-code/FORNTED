@@ -709,6 +709,16 @@
     background: linear-gradient(135deg, #c200ff, #7538ff);
   }
 
+  .install-action.ready {
+    border-color: rgba(56,245,181,.45);
+    color: rgb(var(--color-neon));
+    box-shadow: 0 0 20px rgba(56,245,181,.24);
+  }
+
+  .install-toast {
+    @apply fixed left-1/2 top-[88px] z-50 w-[min(calc(100%-24px),420px)] -translate-x-1/2 rounded-lg border border-neon/30 bg-panel/95 px-4 py-3 text-center text-sm font-black text-white shadow-deep backdrop-blur-xl;
+  }
+
   .user-menu {
     @apply relative;
   }
@@ -770,7 +780,9 @@
   .icon-sun,
   .icon-moon,
   .icon-play,
-  .icon-cart {
+  .icon-cart,
+  .icon-pay,
+  .icon-install {
     position: relative;
     display: block;
     width: 18px;
@@ -846,6 +858,29 @@
     inset: 3px;
     border-radius: 999px;
     box-shadow: inset -5px 0 0 currentColor;
+  }
+
+  .icon-install::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 2px;
+    width: 10px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-radius: 3px;
+  }
+
+  .icon-install::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 5px;
+    width: 4px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
   }
 
   .shop-banner {
@@ -1064,6 +1099,29 @@
     border-radius: 999px;
     background: currentColor;
     box-shadow: 8px 0 0 currentColor;
+  }
+
+  .icon-pay::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 4px;
+    width: 14px;
+    height: 10px;
+    border: 2px solid currentColor;
+    border-radius: 3px;
+  }
+
+  .icon-pay::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 7px;
+    width: 10px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 4px 0 -1px currentColor;
   }
 
   .trust-grid {
@@ -1308,11 +1366,6 @@
     background: currentColor;
   }
 
-  .verify-header {
-    @apply grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-white/10 bg-black/30 p-3;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
-  }
-
   .payment-logo,
   .gateway-logo {
     @apply grid h-12 w-12 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white text-sm font-black text-slate-900;
@@ -1325,19 +1378,6 @@
 
   .payment-logo b {
     @apply text-xs font-black;
-  }
-
-  .verify-header strong {
-    @apply block text-white;
-  }
-
-  .verify-header span:not(.gateway-logo) {
-    @apply block text-xs text-slate-400;
-  }
-
-  .verify-header b {
-    @apply text-right text-lg font-black;
-    color: var(--pay-accent-2);
   }
 
   .verify-note {
@@ -1400,16 +1440,12 @@
   }
 
   .receipt-brand {
-    @apply flex min-h-[82px] items-center justify-center gap-3 px-4 text-center;
+    @apply flex min-h-[82px] items-center justify-center px-4 text-center;
     color: #1c1d2a;
   }
 
   .receipt-brand .payment-logo {
-    @apply h-11 w-11 border-slate-200 bg-white shadow-none;
-  }
-
-  .receipt-brand strong {
-    @apply text-lg font-black;
+    @apply h-14 w-24 border-0 bg-white shadow-none;
   }
 
   .transaction-field {
@@ -1462,10 +1498,6 @@
     color: #ffe766;
   }
 
-  .rate-note {
-    @apply block border-t border-white/15 px-4 pb-4 pt-3 text-xs font-bold text-white/75;
-  }
-
   .copy-line {
     @apply flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/15 bg-black/20 px-3 py-2;
   }
@@ -1484,6 +1516,22 @@
 
   .checkout-actions {
     @apply grid grid-cols-[auto_1fr] gap-3;
+  }
+
+  .gateway-actions {
+    @apply pt-0;
+  }
+
+  .checkout-actions .pay-action {
+    @apply gap-2.5;
+  }
+
+  .payment-shop-card .text-right {
+    min-width: max-content;
+  }
+
+  .payment-shop-card .text-right span {
+    @apply text-[10px] font-black uppercase tracking-wide;
   }
 
   .account-actions {
@@ -1651,15 +1699,6 @@
     .stepper.premium span {
       height: 34px;
       width: 34px;
-    }
-
-    .verify-header {
-      grid-template-columns: auto 1fr;
-    }
-
-    .verify-header b {
-      grid-column: 1 / -1;
-      text-align: left;
     }
 
     .shop-header-inner {
